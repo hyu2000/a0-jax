@@ -88,6 +88,7 @@ class GoBoard(Enviroment):
         ## kill stones with no liberties
 
         def nearby_filter(x):
+            """ neighbors of x """
             x = x.reshape((self.board_size, self.board_size))
             padded_x = jnp.pad(x, ((1, 1), (1, 1)))
             x1 = padded_x[:-2, 1:-1]
@@ -100,6 +101,7 @@ class GoBoard(Enviroment):
             return x.reshape((-1,))
 
         def remove_stones(board, loc):
+            """ check if chain at loc is dead, if so remove it """
             empty = board == 0
             region = roots == roots[loc]  # the region of interest
             nearby_empty = jnp.logical_and(region, nearby_filter(empty))
@@ -156,7 +158,8 @@ class GoBoard(Enviroment):
         return self, reward
 
     def final_score(self, board, turn):
-        """Compute final score of the game."""
+        """ final score of the game: not even as accurate as Tromp score
+        """
         my_score = jnp.sum(board == turn, axis=(-1, -2))
         my_score = my_score + self.count_eyes(board, turn)
         my_score = my_score - turn * self.komi
@@ -165,7 +168,8 @@ class GoBoard(Enviroment):
         return my_score - opp_score
 
     def count_eyes(self, board, turn):
-        """Count number of eyes for a player."""
+        """Count number of eyes for a player. This counts only the single-space eyes (eyeish)
+        """
         board = board.reshape((self.board_size, self.board_size))
         padded_board = jnp.pad(board == turn, ((1, 1), (1, 1)), constant_values=True)
         x1 = padded_board[:-2, 1:-1]
@@ -196,7 +200,9 @@ class GoBoard(Enviroment):
         return self.done
 
     def invalid_actions(self):
-        """Return invalid actions."""
+        """ this doesn't include self-capture.
+        Invalid action is handled in step(): game is immediately terminated, with -1 reward
+        """
         # overriding stones are invalid actions.
         actions = self.board != 0
         actions = actions.reshape(actions.shape[:-2] + (-1,))
