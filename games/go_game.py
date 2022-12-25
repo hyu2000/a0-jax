@@ -123,6 +123,7 @@ class GoBoard(Enviroment):
         dsu_reset = pax.pure(lambda s, m: (s, s.masked_reset(m))[0])
         dsu = dsu_reset(dsu, board == 0)
 
+        # simple Ko handling
         board = board.reshape(self.board.shape)
         recent_boards = self.recent_boards
         same_board = jnp.any(jnp.all(recent_boards == board[None], axis=(1, 2)))
@@ -200,7 +201,7 @@ class GoBoard(Enviroment):
         return self.done
 
     def invalid_actions(self):
-        """ this doesn't include self-capture.
+        """ this doesn't include self-capture, or Ko
         Invalid action is handled in step(): game is immediately terminated, with -1 reward
         """
         # overriding stones are invalid actions.
