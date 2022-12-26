@@ -1,9 +1,6 @@
-import pytest
-import numpy as np
 import jax.numpy as jnp
-from go_game import GoBoard5x5
-import coords
-
+from games.go_game import GoBoard5x5
+from tests import coords
 
 BEST_C2_GAME = "B[cd];W[cc];B[dc];W[dd];B[de];W[bd];B[ed];W[cb];B[be];W[ad];B[db];W[ca];B[ab];W[bb];B[ce];W[ac];B[da];W[aa];B[ae]"
 
