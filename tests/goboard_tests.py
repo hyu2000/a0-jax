@@ -31,11 +31,15 @@ def board_from_gtp(s):
     return env
 
 
+def apply_move(env, move_gtp):
+    move = coords.to_flat(coords.from_gtp(move_gtp))
+    return env.step(jnp.array(move, dtype=int))
+
+
 def test_simple():
     env = GoBoard5x5()
     assert env.num_actions() == 26 and env.turn == 1
-    c2 = coords.to_flat(coords.from_gtp('C2'))
-    env, reward = env.step(jnp.array(c2, dtype=int))
+    env, reward = apply_move(env, 'C2')
     assert reward == 0
     assert env.num_actions() == 26
     assert not env.is_terminated()
@@ -57,20 +61,28 @@ def test_BEST_C2_GAME():
     # black only counted 2 eyes, missing 3 pts
     assert score + 3 == 2.5
 
+    # black E4 will convert that space into two eyes
+    env, _ = apply_move(env, 'pass')
+    env, _ = apply_move(env, 'E4')
+    score = env.final_score(env.board, 1)
+    env.render()
+    assert score == 2.5
+
 
 def test_ko():
     KO_SETUP = 'C2;C3;D3;B2;E2;C1;D1;' + 'D2'
     env = board_from_gtp(KO_SETUP)
     env.render()
     # C2 is not allowed
-    move_c2 = coords.to_flat(coords.from_gtp('C2'))
-    _, reward = env.step(jnp.array(move_c2, dtype=int))
+    env, reward = apply_move(env, 'C2')
     assert reward == -1
+    # and game over
+    assert env.is_terminated()
 
-    env, reward = env.step(jnp.array(coords.to_flat(None)))
-    assert reward == 0
-    env, reward = env.step(jnp.array(coords.to_flat(None)))
-    assert reward != 0
+    # env, reward = apply_move(env, 'pass')
+    # assert reward == 0
+    # env, reward = apply_move(env, 'pass')
+    # assert reward != 0
 
     env.render()
     score = env.final_score(env.board, 1)

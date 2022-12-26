@@ -16,10 +16,10 @@ from utils import env_step, import_class, reset_env
 parser = ArgumentParser()
 parser.add_argument("--game-class", default="go_game.GoBoard9x9", type=str)
 parser.add_argument(
-    "--agent-class", default="resnet_policy.ResnetPolicyValueNet256", type=str
+    "--agent-class", default="resnet_policy.ResnetPolicyValueNet128", type=str
 )
-parser.add_argument("--ckpt-filename", default="go_agent_9x9_256.ckpt", type=str)
-parser.add_argument("--num_simulations_per_move", default=1024, type=int)
+parser.add_argument("--ckpt-filename", default="go_agent_9x9_128_sym.ckpt", type=str)
+parser.add_argument("--num_simulations_per_move", default=4, type=int)
 enable_mcts = True
 args = parser.parse_args()
 
@@ -72,7 +72,7 @@ def human_vs_agent(env, info):
         num_simulations=args.num_simulations_per_move,
         random_action=False,
     )
-    del action_weights, value
+    # del action_weights, value
     env, reward = env_step(env, action)
     reward = reward.item()
     if reward == -1:
@@ -80,7 +80,7 @@ def human_vs_agent(env, info):
     elif reward == 1:
         msg = "You lost :-("
     else:
-        msg = ""
+        msg = f"value=%.2f" % value
     action = action.item()
     if len(msg) == 0 and action == env.num_actions() - 1:
         msg = "AI PASSED!"
@@ -99,6 +99,7 @@ app = Flask(__name__)
 def move(gameid: int):
     env = all_games[gameid]
     info = request.get_json()
+    print(info)
     env, res = human_vs_agent(env, info)
     all_games[gameid] = env
     return jsonify(res)
