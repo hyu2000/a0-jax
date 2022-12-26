@@ -202,5 +202,27 @@ def main(
     )
 
 
+def test_avsa():
+    warnings.filterwarnings("ignore")
+    env = import_class('games.go_game.GoBoard9x9')()
+    agent = import_class('policies.resnet_policy.ResnetPolicyValueNet128')(
+        input_dims=env.observation().shape,
+        num_actions=env.num_actions(),
+    )
+    ckpt_filename = "go_agent_9x9_128_sym.ckpt"
+    with open(ckpt_filename, "rb") as f:
+        agent = agent.load_state_dict(pickle.load(f)["agent"])
+    agent = agent.eval()
+    rng_key = jax.random.PRNGKey(random.randint(0, 999999))
+    result = agent_vs_agent(
+        agent, agent,
+        env,
+        rng_key,
+        enable_mcts=True,
+        num_simulations_per_move=4
+    )
+    print(result)
+
+
 if __name__ == "__main__":
     Fire(main)

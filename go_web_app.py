@@ -14,9 +14,9 @@ from play import play_one_move
 from utils import env_step, import_class, reset_env
 
 parser = ArgumentParser()
-parser.add_argument("--game-class", default="go_game.GoBoard9x9", type=str)
+parser.add_argument("--game-class", default="games.go_game.GoBoard9x9", type=str)
 parser.add_argument(
-    "--agent-class", default="resnet_policy.ResnetPolicyValueNet128", type=str
+    "--agent-class", default="policies.resnet_policy.ResnetPolicyValueNet128", type=str
 )
 parser.add_argument("--ckpt-filename", default="go_agent_9x9_128_sym.ckpt", type=str)
 parser.add_argument("--num_simulations_per_move", default=4, type=int)
