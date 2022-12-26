@@ -97,6 +97,58 @@ def agent_vs_agent(
     return state[3]
 
 
+def agent_vs_agent_with_records(
+    agent1,
+    agent2,
+    env: Enviroment,
+    rng_key: chex.Array,
+    enable_mcts: bool = False,
+    num_simulations_per_move: int = 1024,
+):
+    """A game of agent1 vs agent2, with game history """
+
+    def cond_fn(state):
+        env, step = state[0], state[-1]
+        not_ended = env.is_terminated() == False
+        not_too_long = step <= env.max_num_steps()
+        return jnp.logical_and(not_ended, not_too_long)
+
+    none_action = jnp.array(-1, dtype=int), jnp.array(0.)
+    def step_fn(state, x):
+        env, a1, a2, rng_key, turn, step = state
+        game_not_over = cond_fn(state)
+
+        rng_key_1, rng_key = jax.random.split(rng_key)
+        action, _, _ = play_one_move(
+            a1,
+            env,
+            rng_key_1,
+            enable_mcts=enable_mcts,
+            num_simulations=num_simulations_per_move,
+        )
+        env, reward = env_step(env, action)
+        # signed_reward = jnp.array(turn * reward, dtype=int)
+        new_state = (env, a2, a1, rng_key, -turn, step + 1)
+
+        result = jax.lax.cond(game_not_over,
+                              lambda x: (new_state, (action, reward)),
+                              lambda x: (state, none_action),
+                              state)
+        return result
+
+    state = (
+        reset_env(env),
+        agent1,
+        agent2,
+        rng_key,
+        jnp.array(1),
+        jnp.array(1),
+    )
+    # state = jax.lax.while_loop(cond_fn, loop_fn, state)
+    state, moves = jax.lax.scan(step_fn, state, None, length=env.max_num_steps())
+    return state[0], moves
+
+
 @partial(jax.jit, static_argnums=(4, 5, 6))
 def agent_vs_agent_multiple_games(
     agent1,
@@ -214,12 +266,12 @@ def test_avsa():
         agent = agent.load_state_dict(pickle.load(f)["agent"])
     agent = agent.eval()
     rng_key = jax.random.PRNGKey(random.randint(0, 999999))
-    result = agent_vs_agent(
+    result = agent_vs_agent_with_records(
         agent, agent,
         env,
         rng_key,
         enable_mcts=True,
-        num_simulations_per_move=4
+        num_simulations_per_move=2
     )
     print(result)
 

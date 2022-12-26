@@ -153,6 +153,7 @@ class GoBoard(Enviroment):
         self.count = count
         self.recent_boards = jnp.concatenate((recent_boards[1:], board[None]))
 
+        # reward for the current player. -1 if move is illegal
         reward = jnp.array(0.0)
         reward = jnp.where(done, jnp.where(game_score > 0, 1.0, -1.0), reward)
         reward = jnp.where(is_invalid_action, -1.0, reward)
