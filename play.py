@@ -127,11 +127,11 @@ def agent_vs_agent_with_records(
             num_simulations=num_simulations_per_move,
         )
         env, reward = env_step(env, action)
-        # signed_reward = jnp.array(turn * reward, dtype=int)
+        signed_reward = jnp.where(turn > 0, reward, -reward)
         new_state = (env, a2, a1, rng_key, -turn, step + 1)
 
         result = jax.lax.cond(game_not_over,
-                              lambda x: (new_state, (action, reward)),
+                              lambda x: (new_state, (action, signed_reward)),
                               lambda x: (state, none_action),
                               state)
         return result
@@ -145,8 +145,8 @@ def agent_vs_agent_with_records(
         jnp.array(1),
     )
     # state = jax.lax.while_loop(cond_fn, loop_fn, state)
-    state, moves = jax.lax.scan(step_fn, state, None, length=env.max_num_steps())
-    return state[0], moves
+    state, move_records = jax.lax.scan(step_fn, state, None, length=env.max_num_steps())
+    return move_records
 
 
 @partial(jax.jit, static_argnums=(4, 5, 6))
@@ -252,28 +252,6 @@ def main(
         enable_mcts=enable_mcts,
         num_simulations_per_move=num_simulations_per_move,
     )
-
-
-def test_avsa():
-    warnings.filterwarnings("ignore")
-    env = import_class('games.go_game.GoBoard9x9')()
-    agent = import_class('policies.resnet_policy.ResnetPolicyValueNet128')(
-        input_dims=env.observation().shape,
-        num_actions=env.num_actions(),
-    )
-    ckpt_filename = "go_agent_9x9_128_sym.ckpt"
-    with open(ckpt_filename, "rb") as f:
-        agent = agent.load_state_dict(pickle.load(f)["agent"])
-    agent = agent.eval()
-    rng_key = jax.random.PRNGKey(random.randint(0, 999999))
-    result = agent_vs_agent_with_records(
-        agent, agent,
-        env,
-        rng_key,
-        enable_mcts=True,
-        num_simulations_per_move=2
-    )
-    print(result)
 
 
 if __name__ == "__main__":
