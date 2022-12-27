@@ -1,16 +1,18 @@
 import pickle
 import random
 import warnings
+from functools import partial
 
+import chex
 import jax
 from jax import numpy as jnp
 
 from play import agent_vs_agent_with_records
-from utils import import_class
+from utils import import_class, replicate
 import coords
 
 
-def test_avsa():
+def setupGo9():
     warnings.filterwarnings("ignore")
     env = import_class('games.go_game.GoBoard9x9')()
     agent = import_class('policies.resnet_policy.ResnetPolicyValueNet128')(
@@ -22,6 +24,12 @@ def test_avsa():
         agent = agent.load_state_dict(pickle.load(f)["agent"])
     agent = agent.eval()
     rng_key = jax.random.PRNGKey(random.randint(0, 999999))
+    return env, agent, rng_key
+
+
+def test_avsa():
+    env, agent, rng_key = setupGo9()
+
     result = agent_vs_agent_with_records(
         agent, agent,
         env,
@@ -29,6 +37,7 @@ def test_avsa():
         enable_mcts=True,
         num_simulations_per_move=2
     )
+
     moves, rewards = result
     # move_records = zip(moves.tolist(), rewards.tolist())
     assert jnp.sum(rewards != 0) == 1
@@ -37,5 +46,40 @@ def test_avsa():
     moves = moves[:idx_last + 1]
     assert all(moves[(idx_last + 1):] == -1)
     gtp_moves = [coords.flat_to_gtp(x) for x in moves]
-    print()
-    print(' '.join(gtp_moves), final_reward)
+    print(f'Total {len(moves)} moves, last:', gtp_moves[-5:])
+    print(final_reward)
+    print(' '.join(gtp_moves))
+
+
+def test_tmp():
+    assert coords.flat_to_gtp(-1) == 'J10'
+
+
+def convert_game_record_to_gtp(moves: chex.Array):
+    gtp_moves = [coords.flat_to_gtp(x) for x in moves if x >= 0]
+    game_len = len(gtp_moves)
+    assert all(moves[game_len:] == -1)
+    return ' '.join(gtp_moves)
+
+
+def test_avsa_multi_games():
+    """ vmap/jit, same as agent_vs_agent_multiple_games() """
+    env, agent, rng_key = setupGo9()
+    num_games = 2
+
+    _rng_keys = jax.random.split(rng_key, num_games)
+    rng_keys = jnp.stack(_rng_keys, axis=0)  # type: ignore
+    avsa = partial(
+        agent_vs_agent_with_records,
+        enable_mcts=True,
+        num_simulations_per_move=2
+    )
+    batched_avsa = jax.vmap(avsa, in_axes=(None, None, 0, 0))
+    envs = replicate(env, num_games)
+    results = batched_avsa(agent, agent, envs, rng_keys)
+
+    moves, rewards = results
+    game_results = jnp.sum(rewards, axis=1)
+    gtp_moves = [convert_game_record_to_gtp(x) for x in moves]
+    print('\n'.join(gtp_moves))
+    print(game_results)

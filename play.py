@@ -113,7 +113,7 @@ def agent_vs_agent_with_records(
         not_too_long = step <= env.max_num_steps()
         return jnp.logical_and(not_ended, not_too_long)
 
-    none_action = jnp.array(-1, dtype=int), jnp.array(0.)
+    DUMMY_ACTION_REWARD = jnp.array(-1, dtype=int), jnp.array(0.)
     def step_fn(state, x):
         env, a1, a2, rng_key, turn, step = state
         game_not_over = cond_fn(state)
@@ -132,7 +132,7 @@ def agent_vs_agent_with_records(
 
         result = jax.lax.cond(game_not_over,
                               lambda x: (new_state, (action, signed_reward)),
-                              lambda x: (state, none_action),
+                              lambda x: (state, DUMMY_ACTION_REWARD),
                               state)
         return result
 
