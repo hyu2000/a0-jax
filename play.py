@@ -137,7 +137,7 @@ def agent_vs_agent_with_records(
         return result
 
     state = (
-        reset_env(env),
+        env,  # reset_env(env),
         agent1,
         agent2,
         rng_key,

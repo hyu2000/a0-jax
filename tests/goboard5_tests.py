@@ -1,6 +1,11 @@
 import jax.numpy as jnp
+import pax
+
+from games.dsu import DSU
 from games.go_game import GoBoard5x5
-from tests import coords
+from tests import go, coords
+
+assert go.N == 5
 
 BEST_C2_GAME = "B[cd];W[cc];B[dc];W[dd];B[de];W[bd];B[ed];W[cb];B[be];W[ad];B[db];W[ca];B[ab];W[bb];B[ce];W[ac];B[da];W[aa];B[ae]"
 
@@ -28,7 +33,7 @@ def board_from_gtp(s):
     return env
 
 
-def apply_move(env, move_gtp):
+def apply_move(env, move_gtp: str):
     move = coords.to_flat(coords.from_gtp(move_gtp))
     return env.step(jnp.array(move, dtype=int))
 
@@ -84,3 +89,41 @@ def test_ko():
     env.render()
     score = env.final_score(env.board, 1)
     print(reward, score)
+
+
+@pax.pure
+def get_all_roots_pure(dsu: DSU):
+    res = dsu.get_all_roots()
+    return res
+
+
+def test_dsu():
+    env = GoBoard5x5()
+    A5_flat = coords.to_flat(coords.from_gtp('A5'))
+    B5_flat = coords.to_flat(coords.from_gtp('B5'))
+    env, reward = apply_move(env, 'A5')
+    env, reward = apply_move(env, 'C2')
+    env, reward = apply_move(env, 'B5')
+    # env, reward = apply_move(env, 'C3')
+    env.render()
+    env.dsu.pp()
+    result = env.dsu.find_set_pure(A5_flat)
+    result2 = env.dsu.find_set_pure(B5_flat)
+    print(result)
+    assert result == result2
+    roots = get_all_roots_pure(env.dsu)
+    print(roots, len(roots))
+
+
+def test_chain_border():
+    """ given a chain, find its border
+    1. given a chain (indicator bitmap), find its 1-neighbor expansion: just convolution with
+    the cross-shaped kernel?
+    2. expansion - original chain = border
+    """
+
+
+def test_tromp_score():
+    """ for every empty spot, find the chain & its border (colors);
+    determine ownership of those chains (black/white/both); sum up scores
+    """
