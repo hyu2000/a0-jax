@@ -1,3 +1,5 @@
+import numpy as np
+import scipy.signal as signal
 import jax.numpy as jnp
 import pax
 
@@ -120,10 +122,58 @@ def test_chain_border():
     1. given a chain (indicator bitmap), find its 1-neighbor expansion: just convolution with
     the cross-shaped kernel?
     2. expansion - original chain = border
+
+    chain_border() quite doable; but this is only one chain. We may need to loop over all chains (of empty spaces).
+    Also need to identify those chains in the first place. DSU?
     """
+
+
+def setup_neighbor_filter(with_center=False):
+    m = np.zeros((3, 3), dtype=int)
+    m[0, 1] = m[2, 1] = m[1, 0] = m[1, 2] = 1
+    if with_center:
+        m[1, 1] = 1
+    return m
+
+
+def test_filter():
+    f = setup_neighbor_filter()
+    m = (f == 1).astype(int)
+    print(m)
+
+
+def test_black_floodfill():
+    """ from all black stones, flood-fill on neighboring empty spaces """
+    # setup test board
+    board = np.zeros((go.N, go.N), dtype=int)
+    board[1, :] = 1
+    board[3, :] = -1
+    board[0, 1] = 1
+    board[0, 2] = -1
+    print('original board')
+    print(board)
+
+    nfilter = setup_neighbor_filter(with_center=True)
+    empty_spaces = board == 0
+
+    MAX_STEPS = go.N * 2
+    work_board = (board == 1).astype(int)
+    for i in range(MAX_STEPS):
+        m = signal.convolve(work_board, nfilter, mode='same')
+        m = np.logical_and(m > 0, empty_spaces)
+        work_board = m.astype(int)
+    print('final board:')
+    print(work_board)
+
 
 
 def test_tromp_score():
     """ for every empty spot, find the chain & its border (colors);
     determine ownership of those chains (black/white/both); sum up scores
+
+    Imagine we propagate binary (white/black) messages across empty spaces in parallel: each empty space remembers
+    what messages (a set) it has seen. After 2*go.N cycles, we know the ownership of each space.
+      The key is that messages can only pass thru empty spaces, not stones.
+      Now I only know convolution works this way; and we have 3 unique states. Even/odd number may not work, but
+    real/im/0 for black/white/space should work. Or we do it in two passes: one for black, one for white.
     """
