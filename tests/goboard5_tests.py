@@ -142,26 +142,28 @@ def test_filter():
     print(m)
 
 
-def find_reach(board, neighbor_filter, color: int):
+def find_reach(board, neighbor_filter, color: int, max_steps=go.N*2):
     """ find where colored stones can reach in empty spaces, in parallel
+
+    max_steps: how many steps to reach every empty space from the closet stone.
+      For a typical game, it's less than 5 for 19x19 game
 
     :return: an indicator array (only in empty spaces)
     """
     empty_spaces = board == 0
 
-    MAX_STEPS = go.N * 2
     work_board = (board == color).astype(int)
-    for i in range(MAX_STEPS):
+    for i in range(max_steps):
         m = signal.convolve(work_board, neighbor_filter, mode='same')
         m = np.logical_and(m > 0, empty_spaces)
         work_board = m.astype(int)
     return work_board
 
 
-def tromp_score(board: np.ndarray, komi=0.5):
-    nfilter = setup_neighbor_filter(with_center=True)
-    black_reach = find_reach(board, nfilter, 1)
-    white_reach = find_reach(board, nfilter, -1)
+def tromp_score(board: np.ndarray, komi=0.5, max_steps=5):
+    filter = setup_neighbor_filter(with_center=True)
+    black_reach = find_reach(board, filter, 1, max_steps=max_steps)
+    white_reach = find_reach(board, filter, -1, max_steps=max_steps)
 
     score_board = black_reach - white_reach + board
     return score_board.sum() - komi, score_board
@@ -178,7 +180,7 @@ def test_black_floodfill():
     print('original board')
     print(board)
 
-    score, score_board = tromp_score(board)
+    score, score_board = tromp_score(board, max_steps=2)
     print('score:', score)
     print(score_board)
 
@@ -196,6 +198,6 @@ def test_tromp_score():
     env = board_from_sgf(BEST_C2_GAME)
     env.render()
     board = env.board.to_py()
-    score, score_board = tromp_score(board)
-    print('score:', score)
+    score, score_board = tromp_score(board, max_steps=2)
+    assert score == 2.5
     print(score_board)
