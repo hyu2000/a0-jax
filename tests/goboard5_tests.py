@@ -1,5 +1,5 @@
 import numpy as np
-import scipy.signal as signal
+import jax.scipy.signal as signal
 import jax.numpy as jnp
 import pax
 
@@ -129,10 +129,13 @@ def test_chain_border():
 
 
 def setup_neighbor_filter(with_center=False):
-    m = np.zeros((3, 3), dtype=int)
-    m[0, 1] = m[2, 1] = m[1, 0] = m[1, 2] = 1
+    m = jnp.array([
+        [0, 1, 0],
+        [1, 0, 1],
+        [0, 1, 0]
+        ], dtype=int)
     if with_center:
-        m[1, 1] = 1
+        return m.at[1, 1].set(1)
     return m
 
 
@@ -155,7 +158,7 @@ def find_reach(board, neighbor_filter, color: int, max_steps=go.N*2):
     work_board = (board == color).astype(int)
     for i in range(max_steps):
         m = signal.convolve(work_board, neighbor_filter, mode='same')
-        m = np.logical_and(m > 0, empty_spaces)
+        m = jnp.logical_and(m > 0, empty_spaces)
         work_board = m.astype(int)
     return work_board
 
