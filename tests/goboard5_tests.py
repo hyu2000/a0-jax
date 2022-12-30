@@ -142,6 +142,31 @@ def test_filter():
     print(m)
 
 
+def find_reach(board, neighbor_filter, color: int):
+    """ find where colored stones can reach in empty spaces, in parallel
+
+    :return: an indicator array (only in empty spaces)
+    """
+    empty_spaces = board == 0
+
+    MAX_STEPS = go.N * 2
+    work_board = (board == color).astype(int)
+    for i in range(MAX_STEPS):
+        m = signal.convolve(work_board, neighbor_filter, mode='same')
+        m = np.logical_and(m > 0, empty_spaces)
+        work_board = m.astype(int)
+    return work_board
+
+
+def tromp_score(board: np.ndarray, komi=0.5):
+    nfilter = setup_neighbor_filter(with_center=True)
+    black_reach = find_reach(board, nfilter, 1)
+    white_reach = find_reach(board, nfilter, -1)
+
+    score_board = black_reach - white_reach + board
+    return score_board.sum() - komi, score_board
+
+
 def test_black_floodfill():
     """ from all black stones, flood-fill on neighboring empty spaces """
     # setup test board
@@ -153,18 +178,9 @@ def test_black_floodfill():
     print('original board')
     print(board)
 
-    nfilter = setup_neighbor_filter(with_center=True)
-    empty_spaces = board == 0
-
-    MAX_STEPS = go.N * 2
-    work_board = (board == 1).astype(int)
-    for i in range(MAX_STEPS):
-        m = signal.convolve(work_board, nfilter, mode='same')
-        m = np.logical_and(m > 0, empty_spaces)
-        work_board = m.astype(int)
-    print('final board:')
-    print(work_board)
-
+    score, score_board = tromp_score(board)
+    print('score:', score)
+    print(score_board)
 
 
 def test_tromp_score():
@@ -177,3 +193,9 @@ def test_tromp_score():
       Now I only know convolution works this way; and we have 3 unique states. Even/odd number may not work, but
     real/im/0 for black/white/space should work. Or we do it in two passes: one for black, one for white.
     """
+    env = board_from_sgf(BEST_C2_GAME)
+    env.render()
+    board = env.board.to_py()
+    score, score_board = tromp_score(board)
+    print('score:', score)
+    print(score_board)
