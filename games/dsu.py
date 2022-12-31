@@ -15,6 +15,7 @@ class DSU(pax.Module):
 
     def __init__(self, N, get_all_roots_freq=None):
         super().__init__()
+        # singleton chains
         self.parent = jnp.arange(0, N, 1, dtype=jnp.int32)
         self.size = jnp.ones((N,), dtype=jnp.int32)
         self.N = N
