@@ -155,7 +155,7 @@ def agent_vs_agent_multiple_games(
     agent2,
     env,
     rng_key,
-    enable_mcts: bool = False,
+    enable_mcts: bool = True,
     num_simulations_per_move: int = 1024,
     num_games: int = 128,
 ):

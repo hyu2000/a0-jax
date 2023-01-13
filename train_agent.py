@@ -71,6 +71,7 @@ def collect_batched_self_play_data(
 
     def single_move(prev, inputs):
         """Execute one self-play move using MCTS.
+        On a batch of games (synchronously), hence vmap
 
         This function is designed to be compatible with jax.scan.
         """
@@ -97,6 +98,7 @@ def collect_batched_self_play_data(
     env = reset_env(env)
     env = replicate(env, batch_size)
     step = jnp.array(1)
+    # scan: run a game, collect targets per move
     _, self_play_data = pax.scan(
         single_move,
         (env, rng_key, step),
@@ -206,8 +208,8 @@ def train_step(net, optim, data: TrainingExample):
 
 
 def train(
-    game_class="games.connect_two_game.Connect2Game",
-    agent_class="policies.mlp_policy.MlpPolicyValueNet",
+    game_class="games.go_game.GoBoard9x9",
+    agent_class="policies.resnet_policy.ResnetPolicyValueNet128",
     selfplay_batch_size: int = 128,
     training_batch_size: int = 128,
     num_iterations: int = 100,
@@ -279,15 +281,18 @@ def train(
                 agent, optim, loss = train_step(agent, optim, batch)
                 losses.append(loss)
 
+        num_eval_games, num_simulations_per_move_eval = 128, 200
         value_loss, policy_loss = zip(*losses)
         value_loss = np.mean(sum(jax.device_get(value_loss))) / len(value_loss)
         policy_loss = np.mean(sum(jax.device_get(policy_loss))) / len(policy_loss)
         agent, optim = jax.tree_util.tree_map(lambda x: x[0], (agent, optim))
         win_count1, draw_count1, loss_count1 = agent_vs_agent_multiple_games(
-            agent.eval(), old_agent, env, rng_key_2
+            agent.eval(), old_agent, env, rng_key_2,
+            enable_mcts=True, num_simulations_per_move=num_simulations_per_move_eval, num_games=num_eval_games
         )
         loss_count2, draw_count2, win_count2 = agent_vs_agent_multiple_games(
-            old_agent, agent.eval(), env, rng_key_3
+            old_agent, agent.eval(), env, rng_key_3,
+            enable_mcts=True, num_simulations_per_move=num_simulations_per_move_eval, num_games=num_eval_games
         )
         print(
             "  evaluation      {} win - {} draw - {} loss".format(
