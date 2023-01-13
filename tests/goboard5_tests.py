@@ -145,18 +145,19 @@ def test_filter():
     print(m)
 
 
-def find_reach(board, neighbor_filter, color: int, max_steps=go.N*2):
-    """ find where colored stones can reach in empty spaces, in parallel
+def find_reach(board, neighbor_filter, color: int, num_steps):
+    """ find where colored stones can reach in empty spaces. Implemented as convolution
+    which could be faster on GPUs by exploiting parallelism.
 
-    max_steps: how many steps to reach every empty space from the closet stone.
-      For a typical game, it's less than 5 for 19x19 game
+    num_steps: how many iterations to apply convolution. go.N * 2 should be safe.
+    We could try detect work_board not expanding, but it will cost a little
 
     :return: an indicator array (only in empty spaces)
     """
     empty_spaces = board == 0
 
     work_board = (board == color).astype(int)
-    for i in range(max_steps):
+    for i in range(num_steps):
         m = signal.convolve(work_board, neighbor_filter, mode='same')
         m = jnp.logical_and(m > 0, empty_spaces)
         work_board = m.astype(int)
@@ -164,15 +165,21 @@ def find_reach(board, neighbor_filter, color: int, max_steps=go.N*2):
 
 
 def tromp_score(board: np.ndarray, komi=0.5, max_steps=5):
+    """
+    max_steps: the higher it is, the more accurate. go.N * 2 is safe, but it's expensive.
+    5 should be enough for a typical end-game (even on 19x19 board).
+    For a game in earlier stages, Tromp score is not useful anyways.
+    """
     filter = setup_neighbor_filter(with_center=True)
-    black_reach = find_reach(board, filter, 1, max_steps=max_steps)
-    white_reach = find_reach(board, filter, -1, max_steps=max_steps)
+    black_reach = find_reach(board, filter, 1, num_steps=max_steps)
+    white_reach = find_reach(board, filter, -1, num_steps=max_steps)
 
+    # seki area can be reached by both black and white, therefore cancels out
     score_board = black_reach - white_reach + board
     return score_board.sum() - komi, score_board
 
 
-def test_black_floodfill():
+def test_tromp_score_simple():
     """ from all black stones, flood-fill on neighboring empty spaces """
     # setup test board
     board = np.zeros((go.N, go.N), dtype=int)
@@ -204,3 +211,8 @@ def test_tromp_score():
     score, score_board = tromp_score(board, max_steps=2)
     assert score == 2.5
     print(score_board)
+
+
+def test_check_suicide():
+    """ check whether a move is suicide. The current game logic detects it after the fact
+    """
