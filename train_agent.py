@@ -3,6 +3,7 @@ AlphaZero training script.
 
 Train agent by self-play only.
 """
+import datetime
 import logging
 import os
 import pickle
@@ -29,6 +30,14 @@ from utils import batched_policy, env_step, import_class, replicate, reset_env, 
 EPSILON = 1e-9  # a very small positive value
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)-15s %(levelname)s %(message)s')
+
+
+def mylog(*argv):
+    now = datetime.datetime.now().strftime('%H:%M:%S.%f')[:-3]
+    print(now, argv[0] % argv[1:])
+
+
+logging.info = mylog
 
 
 @chex.dataclass(frozen=True)
@@ -263,7 +272,7 @@ def train(
         return x
 
     for iteration in range(start_iter, num_iterations):
-        logging.info(f"Iteration {iteration}")
+        logging.info(f"Iteration {iteration} / {num_iterations}")
         rng_key_1, rng_key_2, rng_key_3, rng_key = jax.random.split(rng_key, 4)
         agent = agent.eval()
         data = collect_self_play_data(
@@ -321,7 +330,7 @@ def train(
                 "iter": iteration,
             }
             pickle.dump(dic, writer)
-    logging.info("Done!")
+    logging.info(f"Done: {start_iter} to {num_iterations}!")
 
 
 if __name__ == "__main__":
