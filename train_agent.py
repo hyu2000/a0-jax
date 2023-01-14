@@ -3,7 +3,7 @@ AlphaZero training script.
 
 Train agent by self-play only.
 """
-
+import logging
 import os
 import pickle
 import random
@@ -24,9 +24,11 @@ import pax
 from games.env import Enviroment
 from play import agent_vs_agent_multiple_games
 from tree_search import improve_policy_with_mcts, recurrent_fn
-from utils import batched_policy, env_step, import_class, replicate, reset_env
+from utils import batched_policy, env_step, import_class, replicate, reset_env, find_latest_ckpt
 
 EPSILON = 1e-9  # a very small positive value
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)-15s %(levelname)s %(message)s')
 
 
 @chex.dataclass(frozen=True)
@@ -149,8 +151,8 @@ def collect_self_play_data(
     agent,
     env,
     rng_key: chex.Array,
-    batch_size: int,
-    data_size: int,
+    batch_size: int,  # number of games per batch
+    data_size: int,   # number of games
     num_simulations_per_move: int,
 ):
     """Collect self-play data for training."""
@@ -216,10 +218,12 @@ def train(
     num_simulations_per_move: int = 32,
     num_self_plays_per_iteration: int = 128 * 100,
     learning_rate: float = 0.01,
-    ckpt_filename: str = "./agent.ckpt",
+    ckpt_filebase: str = "./agent",
     random_seed: int = 42,
     weight_decay: float = 1e-4,
     lr_decay_steps: int = 100_000,
+    num_eval_games: int = 128,
+    num_simulations_per_move_eval: int = 1024
 ):
     """Train an agent by self-play."""
     env = import_class(game_class)()
@@ -237,14 +241,16 @@ def train(
         opax.sgd(lr_schedule, momentum=0.9),
     ).init(agent.parameters())
 
+    ckpt_filename = find_latest_ckpt(ckpt_filebase)
     if os.path.isfile(ckpt_filename):
-        print("Loading weights at", ckpt_filename)
+        logging.info(f"Loading weights at {ckpt_filename}")
         with open(ckpt_filename, "rb") as f:
             dic = pickle.load(f)
             agent = agent.load_state_dict(dic["agent"])
             optim = optim.load_state_dict(dic["optim"])
             start_iter = dic["iter"] + 1
     else:
+        logging.info('Initializing weights')
         start_iter = 0
     rng_key = jax.random.PRNGKey(random_seed)
     shuffler = random.Random(random_seed)
@@ -257,7 +263,7 @@ def train(
         return x
 
     for iteration in range(start_iter, num_iterations):
-        print(f"Iteration {iteration}")
+        logging.info(f"Iteration {iteration}")
         rng_key_1, rng_key_2, rng_key_3, rng_key = jax.random.split(rng_key, 4)
         agent = agent.eval()
         data = collect_self_play_data(
@@ -274,6 +280,7 @@ def train(
         agent, losses = agent.train(), []
         agent, optim = jax.device_put_replicated((agent, optim), devices)
         ids = range(0, len(data) - training_batch_size, training_batch_size)
+        logging.info(f'  training {num_self_plays_per_iteration} games, #samples=%d', len(data))
         with click.progressbar(ids, label="  train agent   ") as progressbar:
             for idx in progressbar:
                 batch = data[idx : (idx + training_batch_size)]
@@ -281,7 +288,7 @@ def train(
                 agent, optim, loss = train_step(agent, optim, batch)
                 losses.append(loss)
 
-        num_eval_games, num_simulations_per_move_eval = 128, 200
+        logging.info(f'  eval against prev agent: {num_eval_games} games, {num_simulations_per_move_eval} simu per move')
         value_loss, policy_loss = zip(*losses)
         value_loss = np.mean(sum(jax.device_get(value_loss))) / len(value_loss)
         policy_loss = np.mean(sum(jax.device_get(policy_loss))) / len(policy_loss)
@@ -294,27 +301,27 @@ def train(
             old_agent, agent.eval(), env, rng_key_3,
             enable_mcts=True, num_simulations_per_move=num_simulations_per_move_eval, num_games=num_eval_games
         )
-        print(
+        logging.info(
             "  evaluation      {} win - {} draw - {} loss".format(
                 win_count1 + win_count2,
                 draw_count1 + draw_count2,
                 loss_count1 + loss_count2,
             )
         )
-        print(
+        logging.info(
             f"  value loss {value_loss:.3f}"
             f"  policy loss {policy_loss:.3f}"
             f"  learning rate {optim[1][-1].learning_rate:.1e}"
         )
         # save agent's weights to disk
-        with open(ckpt_filename, "wb") as writer:
+        with open(f'{ckpt_filebase}-{iteration}.ckpt', "wb") as writer:
             dic = {
                 "agent": jax.device_get(agent.state_dict()),
                 "optim": jax.device_get(optim.state_dict()),
                 "iter": iteration,
             }
             pickle.dump(dic, writer)
-    print("Done!")
+    logging.info("Done!")
 
 
 if __name__ == "__main__":

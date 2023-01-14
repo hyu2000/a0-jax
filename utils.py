@@ -2,7 +2,7 @@
 
 import importlib
 from functools import partial
-from typing import Tuple, TypeVar
+from typing import Tuple, TypeVar, Optional
 
 import chex
 import jax
@@ -60,3 +60,17 @@ def select_tree(pred: jnp.ndarray, a, b):
     """Selects a pytree based on the given predicate."""
     assert pred.ndim == 0 and pred.dtype == jnp.bool_, "expected boolean scalar"
     return jax.tree_util.tree_map(partial(jax.lax.select, pred), a, b)
+
+
+def find_latest_ckpt(path_base: str) -> Optional[str]:
+    """ look for {path_base}-{iter}.ckpt for the largest iter
+    path_base can contain dir name
+    """
+    import glob
+    fnames = glob.glob(f'{path_base}-*.ckpt')
+    if len(fnames) == 0:
+        return None
+    idx_start = len(path_base) + 1
+    idx_gens = [int(fname[idx_start:-5]) for fname in fnames]
+    idx_latest = sorted(idx_gens)[-1]
+    return f'{path_base}-{idx_latest}.ckpt'
