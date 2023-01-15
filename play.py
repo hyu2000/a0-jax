@@ -176,6 +176,39 @@ def agent_vs_agent_multiple_games(
     return win_count, draw_count, loss_count
 
 
+@partial(jax.jit, static_argnums=(4, 5, 6))
+def agent_vs_agent_multiple_games_with_records(
+    agent1,
+    agent2,
+    env,
+    rng_key,
+    enable_mcts: bool = True,
+    num_simulations_per_move: int = 1024,
+    num_games: int = 128,
+):
+    """Fast agent vs agent evaluation."""
+    _rng_keys = jax.random.split(rng_key, num_games)
+    rng_keys = jnp.stack(_rng_keys, axis=0)  # type: ignore
+    avsa = partial(
+        agent_vs_agent_with_records,
+        enable_mcts=enable_mcts,
+        num_simulations_per_move=num_simulations_per_move,
+    )
+    batched_avsa = jax.vmap(avsa, in_axes=(None, None, 0, 0))
+    envs = replicate(env, num_games)
+    results = batched_avsa(agent1, agent2, envs, rng_keys)
+
+    moves, rewards = results
+    assert rewards.shape[0] == num_games
+    game_results = jnp.sum(rewards, axis=1)
+
+    return game_results, moves
+
+    win_count = jnp.sum(game_results == 1)
+    draw_count = jnp.sum(game_results == 0)
+    loss_count = jnp.sum(game_results == -1)
+
+
 def human_vs_agent(
     agent,
     env: Enviroment,

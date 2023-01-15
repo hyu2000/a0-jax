@@ -7,7 +7,7 @@ import chex
 import jax
 from jax import numpy as jnp
 
-from play import agent_vs_agent_with_records
+from play import agent_vs_agent_with_records, agent_vs_agent_multiple_games_with_records
 from utils import import_class, replicate
 from . import go, coords
 
@@ -57,7 +57,7 @@ def test_tmp():
     assert coords.flat_to_gtp(-1) == 'J10'
 
 
-def convert_game_record_to_gtp(moves: chex.Array):
+def convert_game_record_to_gtp(moves: chex.Array) -> str:
     gtp_moves = [coords.flat_to_gtp(x) for x in moves if x >= 0]
     game_len = len(gtp_moves)
     assert all(moves[game_len:] == -1)
@@ -69,20 +69,23 @@ def test_avsa_multi_games():
     env, agent, rng_key = setupGo9()
     num_games = 4
 
-    _rng_keys = jax.random.split(rng_key, num_games)
-    rng_keys = jnp.stack(_rng_keys, axis=0)  # type: ignore
-    avsa = partial(
-        agent_vs_agent_with_records,
-        enable_mcts=True,
-        num_simulations_per_move=4
-    )
-    batched_avsa = jax.vmap(avsa, in_axes=(None, None, 0, 0))
-    envs = replicate(env, num_games)
-    results = batched_avsa(agent, agent, envs, rng_keys)
+    # _rng_keys = jax.random.split(rng_key, num_games)
+    # rng_keys = jnp.stack(_rng_keys, axis=0)  # type: ignore
+    # avsa = partial(
+    #     agent_vs_agent_with_records,
+    #     enable_mcts=True,
+    #     num_simulations_per_move=2
+    # )
+    # batched_avsa = jax.vmap(avsa, in_axes=(None, None, 0, 0))
+    # envs = replicate(env, num_games)
+    # results = batched_avsa(agent, agent, envs, rng_keys)
+    results = agent_vs_agent_multiple_games_with_records(
+        agent, agent, env, rng_key,
+        num_simulations_per_move=2,
+        num_games=num_games)
 
-    moves, rewards = results
-    assert rewards.shape[0] == num_games
-    game_results = jnp.sum(rewards, axis=1)
-    gtp_moves = [convert_game_record_to_gtp(x) for x in moves]
+    game_results, game_records = results
+    assert len(game_results) == num_games and len(game_records) == num_games
+    gtp_moves = [convert_game_record_to_gtp(x) for x in game_records]
     print('\n'.join(gtp_moves))
-    print(game_results)
+    print(game_results, [len(s.split()) for s in gtp_moves])
