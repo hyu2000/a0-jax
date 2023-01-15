@@ -5,7 +5,8 @@ import pax
 
 from games.dsu import DSU
 from games.go_game import GoBoard5x5
-from tests import go, coords
+import go
+import coords
 
 assert go.N == 5
 

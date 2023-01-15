@@ -1,15 +1,15 @@
 import pickle
 import random
 import warnings
-from functools import partial
 
 import chex
 import jax
 from jax import numpy as jnp
 
 from play import agent_vs_agent_with_records, agent_vs_agent_multiple_games_with_records
-from utils import import_class, replicate
-from . import go, coords
+from utils import import_class
+import go
+import coords
 
 
 def setupGo9():

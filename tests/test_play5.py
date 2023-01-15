@@ -1,15 +1,14 @@
 import pickle
 import random
 import warnings
-from functools import partial
 
-import chex
 import jax
 from jax import numpy as jnp
 
-from play import agent_vs_agent_with_records, agent_vs_agent_multiple_games_with_records
-from utils import import_class, replicate
-from . import go, coords
+from play import agent_vs_agent_multiple_games_with_records
+from train_agent import format_game_record_gtp
+from utils import import_class
+import go
 
 
 def setupGo5():
@@ -26,14 +25,6 @@ def setupGo5():
     agent = agent.eval()
     rng_key = jax.random.PRNGKey(random.randint(0, 999999))
     return env, agent, rng_key
-
-
-def format_game_record_gtp(result: int, moves: chex.Array) -> str:
-    gtp_moves = [coords.flat_to_gtp(x) for x in moves if x >= 0]
-    game_len = len(gtp_moves)
-    assert all(moves[game_len:] == -1)
-    result_str = 'B+R' if result > 0 else 'W+R' if result < 0 else 'B+T'
-    return f'{result_str} %s' % ' '.join(gtp_moves)
 
 
 def test_board():
