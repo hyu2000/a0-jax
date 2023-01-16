@@ -59,15 +59,20 @@ class GoBoard(Enviroment):
 
         For "pass" move, action = board_size x board_size
         """
+        return self.step_impure(action)
+
+    def step_impure(self, action):
+        """ dirty hack: so that we can set up initial positions in GoBard5C2.reset() """
         is_pass_move = action == (self.board_size**2)
         action = jnp.clip(action, a_min=0, a_max=self.board_size**2 - 1)
         i, j = jnp.divmod(action, self.board_size)
         is_invalid_action = self.board[i, j] != 0
         board = self.board.at[i, j].set(self.turn).reshape((-1,))
 
-        ## update the dsu
+        ## update the dsu: basically chains, regardless of color
 
         def update_dsu(s, loc):
+            # this is syntax sugar for lambda. Basically s.union_sets(); return s
             update = pax.pure(lambda s: (s, s.union_sets(action, loc))[0])
             return select_tree(board[action] == board[loc], update(s), s)
 
@@ -160,7 +165,8 @@ class GoBoard(Enviroment):
         return self, reward
 
     def final_score(self, board, turn):
-        """ final score of the game: not even as accurate as Tromp score
+        """ final score of the game: stones + single eyes
+        Not even as accurate as Tromp score
         """
         my_score = jnp.sum(board == turn, axis=(-1, -2))
         my_score = my_score + self.count_eyes(board, turn)
@@ -288,6 +294,19 @@ class GoBoard5x5(GoBoard):
         super().__init__(
             board_size=5, komi=0.5, num_recent_positions=num_recent_positions
         )
+
+
+class GoBoard5C2(GoBoard):
+    """ 5x5 board: C2 open """
+
+    def __init__(self, num_recent_positions: int = 8):
+        super().__init__(
+            board_size=5, komi=0.5, num_recent_positions=num_recent_positions
+        )
+
+    def reset(self):
+        super().reset()
+        self.step_impure(jnp.array(17, dtype=int))  # C2
 
 
 class GoBoard6x6(GoBoard):

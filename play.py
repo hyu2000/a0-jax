@@ -116,6 +116,7 @@ def agent_vs_agent_with_records(
     DUMMY_ACTION_REWARD = jnp.array(-1, dtype=int), jnp.array(0.)
     def step_fn(state, x):
         env, a1, a2, rng_key, turn, step = state
+        # chex.assert_equal(env.turn, turn)
         game_not_over = cond_fn(state)
 
         rng_key_1, rng_key = jax.random.split(rng_key)

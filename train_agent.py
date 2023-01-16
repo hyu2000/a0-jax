@@ -312,8 +312,8 @@ def train(
             old_agent, agent.eval(), env, rng_key_3,
             enable_mcts=True, num_simulations_per_move=num_simulations_per_move_eval, num_games=num_eval_games
         )
-        save_game_records(game_results1, game_records1, f'eval {iteration} vs prev:')
-        save_game_records(game_results2, game_records2, f'eval prev vs {iteration}:')
+        save_game_records(game_results1, game_records1, f'  eval gen{iteration} vs {iteration-1}, {num_eval_games} games:')
+        save_game_records(game_results2, game_records2, f'  eval gen{iteration-1} vs {iteration}, {num_eval_games} games:')
         win_count  = jnp.sum(game_results1 == 1)  + jnp.sum(game_results2 == -1)
         draw_count = jnp.sum(game_results1 == 0)  + jnp.sum(game_results2 == 0)
         loss_count = jnp.sum(game_results1 == -1) + jnp.sum(game_results2 == 1)
