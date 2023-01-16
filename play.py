@@ -127,7 +127,7 @@ def agent_vs_agent_with_records(
             num_simulations=num_simulations_per_move,
         )
         env, reward = env_step(env, action)
-        signed_reward = jnp.where(turn > 0, reward, -reward)
+        signed_reward = turn * reward
         new_state = (env, a2, a1, rng_key, -turn, step + 1)
 
         result = jax.lax.cond(game_not_over,
@@ -141,7 +141,8 @@ def agent_vs_agent_with_records(
         agent1,
         agent2,
         rng_key,
-        jnp.array(1),
+        # the following two states are not necessary as env.turn, env.count carry the same info
+        env.turn,
         jnp.array(1),
     )
     # state = jax.lax.while_loop(cond_fn, loop_fn, state)
