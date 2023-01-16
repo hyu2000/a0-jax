@@ -1,6 +1,7 @@
 """Useful functions."""
 
 import importlib
+import os.path
 from functools import partial
 from typing import Tuple, TypeVar, Optional
 
@@ -67,6 +68,11 @@ def find_latest_ckpt(path_base: str) -> Optional[str]:
     path_base can contain dir name
     """
     import glob
+    dir = os.path.dirname(path_base)
+    if not os.path.isdir(dir):
+        print(f'creating {dir}')
+        os.makedirs(dir, exist_ok=True)
+        return None
     fnames = glob.glob(f'{path_base}-*.ckpt')
     if len(fnames) == 0:
         return None
