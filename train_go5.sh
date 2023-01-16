@@ -8,10 +8,10 @@ python3 train_agent.py \
     --ckpt-filebase="./go_agent_5" \
     --selfplay-batch-size=64 \
     --training-batch-size=128 \
-    --num-simulations-per-move=32 \
     --learning-rate=1e-2 \
     --lr-decay-steps=1000000 \
-    --num-eval-games=32 \
+    --num-simulations-per-move=32 \
     --num-simulations-per-move-eval=32 \
     --num-self-plays-per-iteration=512 \
-    --num-iterations=4
+    --num-eval-games=32 \
+    --num-iterations=6

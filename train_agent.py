@@ -22,8 +22,9 @@ import opax
 import optax
 import pax
 
+import coords
 from games.env import Enviroment
-from play import agent_vs_agent_multiple_games
+from play import agent_vs_agent_multiple_games, agent_vs_agent_multiple_games_with_records
 from tree_search import improve_policy_with_mcts, recurrent_fn
 from utils import batched_policy, env_step, import_class, replicate, reset_env, find_latest_ckpt
 
@@ -251,7 +252,7 @@ def train(
     ).init(agent.parameters())
 
     ckpt_filename = find_latest_ckpt(ckpt_filebase)
-    if os.path.isfile(ckpt_filename):
+    if ckpt_filename and os.path.isfile(ckpt_filename):
         logging.info(f"Loading weights at {ckpt_filename}")
         with open(ckpt_filename, "rb") as f:
             dic = pickle.load(f)
@@ -297,25 +298,27 @@ def train(
                 agent, optim, loss = train_step(agent, optim, batch)
                 losses.append(loss)
 
-        logging.info(f'  eval against prev agent: {num_eval_games} games, {num_simulations_per_move_eval} simu per move')
         value_loss, policy_loss = zip(*losses)
         value_loss = np.mean(sum(jax.device_get(value_loss))) / len(value_loss)
         policy_loss = np.mean(sum(jax.device_get(policy_loss))) / len(policy_loss)
         agent, optim = jax.tree_util.tree_map(lambda x: x[0], (agent, optim))
-        win_count1, draw_count1, loss_count1 = agent_vs_agent_multiple_games(
+
+        logging.info(f'  eval against prev agent: {num_eval_games} games, {num_simulations_per_move_eval} simu per move')
+        game_results1, game_records1 = agent_vs_agent_multiple_games_with_records(
             agent.eval(), old_agent, env, rng_key_2,
             enable_mcts=True, num_simulations_per_move=num_simulations_per_move_eval, num_games=num_eval_games
         )
-        loss_count2, draw_count2, win_count2 = agent_vs_agent_multiple_games(
+        game_results2, game_records2 = agent_vs_agent_multiple_games_with_records(
             old_agent, agent.eval(), env, rng_key_3,
             enable_mcts=True, num_simulations_per_move=num_simulations_per_move_eval, num_games=num_eval_games
         )
+        save_game_records(game_results1, game_records1, f'eval {iteration} vs prev:')
+        save_game_records(game_results2, game_records2, f'eval prev vs {iteration}:')
+        win_count  = jnp.sum(game_results1 == 1)  + jnp.sum(game_results2 == -1)
+        draw_count = jnp.sum(game_results1 == 0)  + jnp.sum(game_results2 == 0)
+        loss_count = jnp.sum(game_results1 == -1) + jnp.sum(game_results2 == 1)
         logging.info(
-            "  evaluation      {} win - {} draw - {} loss".format(
-                win_count1 + win_count2,
-                draw_count1 + draw_count2,
-                loss_count1 + loss_count2,
-            )
+            f"  evaluation      {win_count} win - {draw_count} draw - {loss_count} loss"
         )
         logging.info(
             f"  value loss {value_loss:.3f}"
@@ -331,6 +334,21 @@ def train(
             }
             pickle.dump(dic, writer)
     logging.info(f"Done: {start_iter} to {num_iterations}!")
+
+
+def save_game_records(game_results: chex.Array, game_records: chex.Array, header: str):
+    assert len(game_results) == len(game_records)
+    gtp_moves = [format_game_record_gtp(result, x) for result, x in zip(game_results, game_records)]
+    print(header)
+    print('\n'.join(gtp_moves))
+
+
+def format_game_record_gtp(result: int, moves: chex.Array) -> str:
+    gtp_moves = [coords.flat_to_gtp(x) for x in moves if x >= 0]
+    game_len = len(gtp_moves)
+    assert all(moves[game_len:] == -1)
+    result_str = 'B+R' if result > 0 else 'W+R' if result < 0 else 'B+T'
+    return f'{result_str} %s' % ' '.join(gtp_moves)
 
 
 if __name__ == "__main__":
