@@ -10,6 +10,7 @@ from functools import partial
 import chex
 import jax
 import jax.numpy as jnp
+from jax.experimental import checkify
 from fire import Fire
 
 from games.env import Enviroment
@@ -108,15 +109,16 @@ def agent_vs_agent_with_records(
     """A game of agent1 vs agent2, with game history """
 
     def cond_fn(state):
-        env, step = state[0], state[-1]
+        env = state[0]
         not_ended = env.is_terminated() == False
-        not_too_long = step <= env.max_num_steps()
+        not_too_long = env.count <= env.max_num_steps()
         return jnp.logical_and(not_ended, not_too_long)
 
     DUMMY_ACTION_REWARD = jnp.array(-1, dtype=int), jnp.array(0.)
     def step_fn(state, x):
-        env, a1, a2, rng_key, turn, step = state
-        # chex.assert_equal(env.turn, turn)
+        env, a1, a2, rng_key = state
+        turn = env.turn
+        # checkify.check(env.turn == turn, 'turn should match')
         game_not_over = cond_fn(state)
 
         rng_key_1, rng_key = jax.random.split(rng_key)
@@ -129,7 +131,7 @@ def agent_vs_agent_with_records(
         )
         env, reward = env_step(env, action)
         signed_reward = turn * reward
-        new_state = (env, a2, a1, rng_key, -turn, step + 1)
+        new_state = (env, a2, a1, rng_key)
 
         result = jax.lax.cond(game_not_over,
                               lambda x: (new_state, (action, signed_reward)),
@@ -143,8 +145,8 @@ def agent_vs_agent_with_records(
         agent2,
         rng_key,
         # the following two states are not necessary as env.turn, env.count carry the same info
-        env.turn,
-        jnp.array(1),
+        # env.turn,
+        # jnp.array(1),
     )
     # state = jax.lax.while_loop(cond_fn, loop_fn, state)
     state, move_records = jax.lax.scan(step_fn, state, None, length=env.max_num_steps())
