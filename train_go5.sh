@@ -2,10 +2,10 @@
 
 TF_CPP_MIN_LOG_LEVEL=2 \
 python3 train_agent.py \
-    --game-class="games.go_game.GoBoard5x5" \
+    --game-class="games.go_game.GoBoard5C2" \
     --agent-class="policies.resnet_policy.ResnetPolicyValueNet128" \
     --random-seed=42 \
-    --ckpt-filebase="./go_agent_5" \
+    --ckpt-filebase="./exp-go5C2/go_agent_5" \
     --selfplay-batch-size=64 \
     --training-batch-size=128 \
     --learning-rate=1e-2 \
