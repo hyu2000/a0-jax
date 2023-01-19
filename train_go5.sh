@@ -10,8 +10,8 @@ python3 train_agent.py \
     --training-batch-size=128 \
     --learning-rate=1e-2 \
     --lr-decay-steps=1000000 \
-    --num-simulations-per-move=32 \
-    --num-simulations-per-move-eval=32 \
-    --num-self-plays-per-iteration=512 \
+    --num-simulations-per-move=128 \
+    --num-simulations-per-move-eval=128 \
+    --num-self-plays-per-iteration=1024 \
     --num-eval-games=32 \
     --num-iterations=6

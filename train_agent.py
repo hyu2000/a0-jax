@@ -273,6 +273,7 @@ def train(
         return x
 
     for iteration in range(start_iter, num_iterations):
+        logging.info('-' * 60)
         logging.info(f"Iteration {iteration} / {num_iterations}")
         rng_key_1, rng_key_2, rng_key_3, rng_key = jax.random.split(rng_key, 4)
         agent = agent.eval()
