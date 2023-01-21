@@ -12,6 +12,7 @@ import pax
 
 from games.dsu import DSU
 from games.env import Enviroment
+from games import go_logic as ggl
 from utils import select_tree
 
 
@@ -149,7 +150,7 @@ class GoBoard(Enviroment):
         done = jnp.logical_or(done, count >= self.max_num_steps())
 
         # update internal states
-        game_score = self.final_score(board, self.turn)
+        game_score = self.tromp_score(board, self.turn)
         self.turn = jnp.where(done, self.turn, -self.turn)
         self.done = done
         self.board = board
@@ -163,6 +164,11 @@ class GoBoard(Enviroment):
         reward = jnp.where(done, jnp.where(game_score > 0, 1.0, -1.0), reward)
         reward = jnp.where(is_invalid_action, -1.0, reward)
         return self, reward
+
+    def tromp_score(self, board, turn):
+        """ """
+        score = ggl.tromp_score(board, self.komi)
+        return turn * score
 
     def final_score(self, board, turn):
         """ final score of the game: stones + single eyes
