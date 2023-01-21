@@ -167,7 +167,7 @@ class GoBoard(Enviroment):
 
     def tromp_score(self, board, turn):
         """ """
-        score = ggl.tromp_score(board, self.komi)
+        score, _ = ggl.tromp_score(board, self.komi)
         return turn * score
 
     def final_score(self, board, turn):
