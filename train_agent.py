@@ -3,7 +3,6 @@ AlphaZero training script.
 
 Train agent by self-play only.
 """
-import datetime
 import logging
 import os
 import pickle
@@ -23,22 +22,13 @@ import optax
 import pax
 
 import coords
+import mylogging
 from games.env import Enviroment
 from play_with_records import agent_vs_agent_multiple_games_with_records
 from tree_search import improve_policy_with_mcts, recurrent_fn
 from utils import batched_policy, env_step, import_class, replicate, reset_env, find_latest_ckpt
 
 EPSILON = 1e-9  # a very small positive value
-
-logging.basicConfig(level=logging.INFO, format='%(asctime)-15s %(levelname)s %(message)s')
-
-
-def mylog(*argv):
-    now = datetime.datetime.now().strftime('%H:%M:%S.%f')[:-3]
-    print(now, argv[0] % argv[1:])
-
-
-logging.info = mylog
 
 
 @chex.dataclass(frozen=True)

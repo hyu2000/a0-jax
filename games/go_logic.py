@@ -21,7 +21,7 @@ def test_filter():
     print(m)
 
 
-NEIGHBOR_FILTER = setup_neighbor_filter(with_center=True)
+CROSS_FILTER = setup_neighbor_filter(with_center=True)
 
 
 def find_reach(board, neighbor_filter, color: int, num_steps: int):
@@ -49,8 +49,8 @@ def tromp_score(board: np.ndarray, komi=0.5, max_steps=5):
     5 should be enough for a typical end-game (even on 19x19 board).
     For a game in earlier stages, Tromp score is not useful anyways.
     """
-    black_reach = find_reach(board, NEIGHBOR_FILTER, 1, num_steps=max_steps)
-    white_reach = find_reach(board, NEIGHBOR_FILTER, -1, num_steps=max_steps)
+    black_reach = find_reach(board, CROSS_FILTER, 1, num_steps=max_steps)
+    white_reach = find_reach(board, CROSS_FILTER, -1, num_steps=max_steps)
 
     # seki area can be reached by both black and white, therefore cancels out
     score_board = black_reach - white_reach + board

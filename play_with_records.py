@@ -13,6 +13,8 @@ from fire import Fire
 from games.env import Enviroment
 from tree_search import improve_policy_with_mcts, recurrent_fn
 from utils import env_step, import_class, replicate, reset_env
+import mylogging
+import logging
 
 
 @partial(
@@ -135,9 +137,10 @@ def agent_vs_agent_multiple_games_with_records(
 def main(
     game_class="games.go_game.GoBoard5C2",
     agent_class="policies.resnet_policy.ResnetPolicyValueNet128",
-    ckpt_filename: str = "./agent.ckpt",
+    ckpt_filename: str = "./exp-go5C2/colab/go_agent_5-25.ckpt",
     enable_mcts: bool = True,
     num_simulations_per_move: int = 128,
+    num_games: int = 64,
 ):
     """Load agent's weight from disk and start the game."""
     warnings.filterwarnings("ignore")
@@ -150,6 +153,7 @@ def main(
     with open(ckpt_filename, "rb") as f:
         agent = agent.load_state_dict(pickle.load(f)["agent"])
     agent = agent.eval()
+    logging.info(f'Starting {num_games} eval games')
     game_results, moves = agent_vs_agent_multiple_games_with_records(
         agent,
         agent,
@@ -157,9 +161,14 @@ def main(
         rng_key,
         enable_mcts=enable_mcts,
         num_simulations_per_move=num_simulations_per_move,
-        num_games=64
+        num_games=num_games
     )
+
+    win_count = jnp.sum(game_results == 1)
+    loss_count = jnp.sum(game_results == -1)
+    logging.info(f"  evaluation      {win_count} win - {loss_count} loss")
 
 
 if __name__ == "__main__":
+    print("Cores:", jax.local_devices(), 'num_devices=', jax.local_device_count())
     Fire(main)
