@@ -24,7 +24,7 @@ import pax
 
 import coords
 from games.env import Enviroment
-from play import agent_vs_agent_multiple_games, agent_vs_agent_multiple_games_with_records
+from play_with_records import agent_vs_agent_multiple_games_with_records
 from tree_search import improve_policy_with_mcts, recurrent_fn
 from utils import batched_policy, env_step, import_class, replicate, reset_env, find_latest_ckpt
 

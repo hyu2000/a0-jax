@@ -10,7 +10,6 @@ from functools import partial
 import chex
 import jax
 import jax.numpy as jnp
-from jax.experimental import checkify
 from fire import Fire
 
 from games.env import Enviroment
@@ -98,61 +97,6 @@ def agent_vs_agent(
     return state[3]
 
 
-def agent_vs_agent_with_records(
-    agent1,
-    agent2,
-    env: Enviroment,
-    rng_key: chex.Array,
-    enable_mcts: bool = False,
-    num_simulations_per_move: int = 1024,
-):
-    """A game of agent1 vs agent2, with game history """
-
-    def cond_fn(state):
-        env = state[0]
-        not_ended = env.is_terminated() == False
-        not_too_long = env.count <= env.max_num_steps()
-        return jnp.logical_and(not_ended, not_too_long)
-
-    DUMMY_ACTION_REWARD = jnp.array(-1, dtype=int), jnp.array(0.)
-    def step_fn(state, x):
-        env, a1, a2, rng_key = state
-        turn = env.turn
-        # checkify.check(env.turn == turn, 'turn should match')
-        game_not_over = cond_fn(state)
-
-        rng_key_1, rng_key = jax.random.split(rng_key)
-        action, _, _ = play_one_move(
-            a1,
-            env,
-            rng_key_1,
-            enable_mcts=enable_mcts,
-            num_simulations=num_simulations_per_move,
-        )
-        env, reward = env_step(env, action)
-        signed_reward = turn * reward
-        new_state = (env, a2, a1, rng_key)
-
-        result = jax.lax.cond(game_not_over,
-                              lambda x: (new_state, (action, signed_reward)),
-                              lambda x: (state, DUMMY_ACTION_REWARD),
-                              state)
-        return result
-
-    state = (
-        env,  # reset_env(env),
-        agent1,
-        agent2,
-        rng_key,
-        # the following two states are not necessary as env.turn, env.count carry the same info
-        # env.turn,
-        # jnp.array(1),
-    )
-    # state = jax.lax.while_loop(cond_fn, loop_fn, state)
-    state, move_records = jax.lax.scan(step_fn, state, None, length=env.max_num_steps())
-    return move_records
-
-
 @partial(jax.jit, static_argnums=(4, 5, 6))
 def agent_vs_agent_multiple_games(
     agent1,
@@ -178,39 +122,6 @@ def agent_vs_agent_multiple_games(
     draw_count = jnp.sum(results == 0)
     loss_count = jnp.sum(results == -1)
     return win_count, draw_count, loss_count
-
-
-@partial(jax.jit, static_argnums=(4, 5, 6))
-def agent_vs_agent_multiple_games_with_records(
-    agent1,
-    agent2,
-    env,
-    rng_key,
-    enable_mcts: bool = True,
-    num_simulations_per_move: int = 1024,
-    num_games: int = 128,
-):
-    """Fast agent vs agent evaluation."""
-    _rng_keys = jax.random.split(rng_key, num_games)
-    rng_keys = jnp.stack(_rng_keys, axis=0)  # type: ignore
-    avsa = partial(
-        agent_vs_agent_with_records,
-        enable_mcts=enable_mcts,
-        num_simulations_per_move=num_simulations_per_move,
-    )
-    batched_avsa = jax.vmap(avsa, in_axes=(None, None, 0, 0))
-    envs = replicate(env, num_games)
-    results = batched_avsa(agent1, agent2, envs, rng_keys)
-
-    moves, rewards = results
-    assert rewards.shape[0] == num_games
-    game_results = jnp.sum(rewards, axis=1)
-
-    return game_results, moves
-
-    win_count = jnp.sum(game_results == 1)
-    draw_count = jnp.sum(game_results == 0)
-    loss_count = jnp.sum(game_results == -1)
 
 
 def human_vs_agent(
