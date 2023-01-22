@@ -72,7 +72,6 @@ def agent_vs_agent_with_records(
     def step_fn(state, x):
         env, a1, a2, rng_key = state
         turn = env.turn
-        # checkify.check(env.turn == turn, 'turn should match')
         game_not_over = cond_fn(state)
 
         rng_key_1, rng_key = jax.random.split(rng_key)
@@ -98,9 +97,6 @@ def agent_vs_agent_with_records(
         agent1,
         agent2,
         rng_key,
-        # the following two states are not necessary as env.turn, env.count carry the same info
-        # env.turn,
-        # jnp.array(1),
     )
     # state = jax.lax.while_loop(cond_fn, loop_fn, state)
     state, move_records = jax.lax.scan(step_fn, state, None, length=env.max_num_steps())
@@ -134,6 +130,35 @@ def agent_vs_agent_multiple_games_with_records(
     game_results = jnp.sum(rewards, axis=1)
 
     return game_results, moves
+
+
+def main(
+    game_class="games.go_game.GoBoard5C2",
+    agent_class="policies.resnet_policy.ResnetPolicyValueNet128",
+    ckpt_filename: str = "./agent.ckpt",
+    enable_mcts: bool = True,
+    num_simulations_per_move: int = 128,
+):
+    """Load agent's weight from disk and start the game."""
+    warnings.filterwarnings("ignore")
+    env = import_class(game_class)()
+    agent = import_class(agent_class)(
+        input_dims=env.observation().shape,
+        num_actions=env.num_actions(),
+    )
+    rng_key = jax.random.PRNGKey(1234)
+    with open(ckpt_filename, "rb") as f:
+        agent = agent.load_state_dict(pickle.load(f)["agent"])
+    agent = agent.eval()
+    game_results, moves = agent_vs_agent_multiple_games_with_records(
+        agent,
+        agent,
+        env,
+        rng_key,
+        enable_mcts=enable_mcts,
+        num_simulations_per_move=num_simulations_per_move,
+        num_games=64
+    )
 
 
 if __name__ == "__main__":
