@@ -6,9 +6,9 @@ import jax
 from jax import numpy as jnp
 
 import coords
-from play import agent_vs_agent_multiple_games_with_records
+from play_with_records import agent_vs_agent_multiple_games_with_records
 from train_agent import format_game_record_gtp
-from utils import import_class, reset_env
+from utils import import_class, reset_env, replicate
 import go
 
 
@@ -21,7 +21,7 @@ def setupGo5():
         num_actions=env.num_actions(),
     )
     # ckpt_filename = "/Users/hyu/PycharmProjects/a0-jax/exp-5x5/go_agent_5-5.ckpt"
-    ckpt_filename = "/Users/hyu/PycharmProjects/a0-jax/exp-go5C2/go_agent_5-5.ckpt"
+    ckpt_filename = "/Users/hyu/PycharmProjects/a0-jax/exp-go5C2/m1pro/go_agent_5-5.ckpt"
     with open(ckpt_filename, "rb") as f:
         agent = agent.load_state_dict(pickle.load(f)["agent"])
     agent = agent.eval()
@@ -77,7 +77,7 @@ def test_illegal_move():
 def test_avsa_multi_games():
     """ """
     env, agent, rng_key = setupGo5()
-    num_games = 2
+    num_games = 4
 
     results = agent_vs_agent_multiple_games_with_records(
         agent, agent, env, rng_key,
@@ -89,3 +89,32 @@ def test_avsa_multi_games():
     gtp_moves = [format_game_record_gtp(result, x) for result, x in zip(game_results, game_records)]
     print('\n'.join(gtp_moves))
     print(game_results, [len(s.split()) for s in gtp_moves])
+
+
+""" a bunch of strangeness in collect_batched_self_play_data()
+   replicate & vmap
+"""
+def test_replicate():
+    """ pax.module is registered as pytree, so that jax can directly operate on them
+    It uses data type to separate the attributes
+    """
+    env, agent, rng_key = setupGo5()
+    leaves = jax.tree_util.tree_leaves(env)
+    print(len(leaves), 'leaves:', leaves)
+    print(jax.tree_util.tree_structure(env))
+
+    env = replicate(env, 3)
+    print(env)
+    # obj method can still be called
+    print(env.max_num_steps())
+    # this method is vectorized!
+    print(env.is_terminated())
+    # these are not replicated
+    print(env.board_size)
+    print(env.komi)
+    print(env.num_recent_positions)
+    # these are all replicated
+    # print(env.board)
+    print(env.turn)
+    # result = jax.tree_util.tree_map(lambda x: x.max_num_steps(), env)
+    # print(result)
