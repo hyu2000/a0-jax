@@ -1,11 +1,17 @@
-import datetime
 import logging
 
 
-def mylog(*argv):
-    now = datetime.datetime.now().strftime('%H:%M:%S.%f')[:-3]
-    print(now, argv[0] % argv[1:])
+def setup_absl_logging():
+    # https://stackoverflow.com/questions/59654893/python-absl-logging-without-timestamp-module-name
+    from absl import logging as absl_logging
+
+    absl_logging.use_absl_handler()
+    absl_logging.set_verbosity(logging.INFO)
+
+    formatter = logging.Formatter('%(asctime)-15s %(name)s %(levelname)s %(message)s')
+    handler = absl_logging.get_absl_handler()
+    handler.setFormatter(formatter)
+    handler.setLevel(logging.INFO)
 
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)-15s %(levelname)s %(message)s')
-logging.info = mylog
+setup_absl_logging()
