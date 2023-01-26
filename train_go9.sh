@@ -1,6 +1,7 @@
 #!/bin/bash
 
 TF_CPP_MIN_LOG_LEVEL=2 \
+BOARD_SIZE=9 \
 python3 train_agent.py \
     --game-class="games.go_game.GoBoard9x9" \
     --agent-class="policies.resnet_policy.ResnetPolicyValueNet128" \
