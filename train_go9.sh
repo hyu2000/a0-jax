@@ -15,5 +15,3 @@ python3 train_agent.py \
     --num-self-plays-per-iteration=512 \
     --num-eval-games=32 \
     --num-iterations=1
-
-#     --ckpt-filebase="./exp-go5C2/go_agent_5" \
