@@ -61,6 +61,46 @@ class MoveOutput:
     terminated: chex.Array
 
 
+def selfplay_with_records(
+    agent1,
+    env: Enviroment,
+    rng_key: chex.Array,
+    enable_mcts: bool = False,
+    num_simulations_per_move: int = 1024,
+):
+    """ see if eliminate agent2 makes it faster
+    """
+    def step_fn(state, x):
+        env, rng_key = state
+        turn = env.turn
+
+        rng_key_1, rng_key = jax.random.split(rng_key)
+        action, _, _ = play_one_move(
+            agent1,
+            env,
+            rng_key_1,
+            enable_mcts=enable_mcts,
+            num_simulations=num_simulations_per_move,
+        )
+        terminated = env.is_terminated()
+        env, reward = env_step(env, action)
+        signed_reward = turn * reward
+        new_state = (env, rng_key)
+
+        return new_state, MoveOutput(
+            action=action,
+            reward=signed_reward,
+            terminated=jnp.logical_or(terminated, env.is_terminated())
+        )
+
+    state = (
+        env,  # reset_env(env),
+        rng_key,
+    )
+    state, move_records = jax.lax.scan(step_fn, state, None, length=env.max_num_steps())
+    return move_records
+
+
 def agent_vs_agent_with_records(
     agent1,
     agent2,
@@ -117,13 +157,13 @@ def agent_vs_agent_multiple_games_with_records(
     _rng_keys = jax.random.split(rng_key, num_games)
     rng_keys = jnp.stack(_rng_keys, axis=0)  # type: ignore
     avsa = partial(
-        agent_vs_agent_with_records,
+        selfplay_with_records,
         enable_mcts=enable_mcts,
         num_simulations_per_move=num_simulations_per_move,
     )
-    batched_avsa = jax.vmap(avsa, in_axes=(None, None, 0, 0))
+    batched_avsa = jax.vmap(avsa, in_axes=(None, 0, 0))
     envs = replicate(env, num_games)
-    results = batched_avsa(agent1, agent2, envs, rng_keys)
+    results = batched_avsa(agent1, envs, rng_keys)
 
     return results
 
