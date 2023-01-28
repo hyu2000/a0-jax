@@ -70,14 +70,6 @@ def agent_vs_agent_with_records(
     num_simulations_per_move: int = 1024,
 ):
     """A game of agent1 vs agent2, with game history """
-
-    def cond_fn(state):
-        env = state[0]
-        not_ended = env.is_terminated() == False
-        not_too_long = env.count <= env.max_num_steps()
-        return jnp.logical_and(not_ended, not_too_long)
-
-    DUMMY_ACTION_REWARD = jnp.array(-1, dtype=int), jnp.array(0.)
     def step_fn(state, x):
         env, a1, a2, rng_key = state
         turn = env.turn
@@ -90,6 +82,7 @@ def agent_vs_agent_with_records(
             enable_mcts=enable_mcts,
             num_simulations=num_simulations_per_move,
         )
+        terminated = env.is_terminated()
         env, reward = env_step(env, action)
         signed_reward = turn * reward
         new_state = (env, a2, a1, rng_key)
@@ -97,7 +90,7 @@ def agent_vs_agent_with_records(
         return new_state, MoveOutput(
             action=action,
             reward=signed_reward,
-            terminated=env.is_terminated()
+            terminated=jnp.logical_or(terminated, env.is_terminated())
         )
 
     state = (
@@ -106,7 +99,6 @@ def agent_vs_agent_with_records(
         agent2,
         rng_key,
     )
-    # state = jax.lax.while_loop(cond_fn, loop_fn, state)
     state, move_records = jax.lax.scan(step_fn, state, None, length=env.max_num_steps())
     return move_records
 
@@ -132,10 +124,6 @@ def agent_vs_agent_multiple_games_with_records(
     batched_avsa = jax.vmap(avsa, in_axes=(None, None, 0, 0))
     envs = replicate(env, num_games)
     results = batched_avsa(agent1, agent2, envs, rng_keys)
-
-    # moves, rewards = results
-    # assert rewards.shape[0] == num_games
-    # game_results = jnp.sum(rewards, axis=1)
 
     return results
 
@@ -171,12 +159,13 @@ def main(
     )
 
     terminated = game_records.terminated.astype(int)
-    # argmax picks the 1st in case of tie
-    game_lengths = jnp.argmax(terminated == 1, axis=1)
-    game_results = game_records.reward[jnp.arange(num_games), game_lengths]
-    for i, (len, result, actions) in enumerate(zip(game_lengths, game_results, game_records.action)):
-        gtp_moves = format_game_record_gtp(result, actions[:len])
-        print(f'game {i}: {len} {gtp_moves}')
+    # np.argmax picks the 1st in case of tie
+    game_ilast = jnp.argmax(terminated == 1, axis=1)
+    game_results = game_records.reward[jnp.arange(num_games), game_ilast]
+    for i, (idx_last_move, result, actions) in enumerate(zip(game_ilast, game_results, game_records.action)):
+        game_len = idx_last_move + 1
+        gtp_moves = format_game_record_gtp(result, actions[:game_len])
+        print(f'game {i}: {game_len} {gtp_moves}')
     win_count = jnp.sum(game_results == 1)
     loss_count = jnp.sum(game_results == -1)
     logging.info(f"  evaluation      {win_count} win - {loss_count} loss")
