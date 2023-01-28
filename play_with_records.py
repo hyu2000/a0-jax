@@ -7,10 +7,10 @@ from functools import partial
 import chex
 import jax
 import jax.numpy as jnp
-from jax.experimental import checkify
 from fire import Fire
 
 from games.env import Enviroment
+from go_utils import format_game_record_gtp
 from tree_search import improve_policy_with_mcts, recurrent_fn
 from utils import env_step, import_class, replicate, reset_env
 import mylogging
@@ -54,6 +54,13 @@ def play_one_move(
     return action, action_weights, value
 
 
+@chex.dataclass(frozen=True)
+class MoveOutput:
+    action: chex.Array
+    reward: chex.Array
+    terminated: chex.Array
+
+
 def agent_vs_agent_with_records(
     agent1,
     agent2,
@@ -74,7 +81,6 @@ def agent_vs_agent_with_records(
     def step_fn(state, x):
         env, a1, a2, rng_key = state
         turn = env.turn
-        game_not_over = cond_fn(state)
 
         rng_key_1, rng_key = jax.random.split(rng_key)
         action, _, _ = play_one_move(
@@ -88,11 +94,11 @@ def agent_vs_agent_with_records(
         signed_reward = turn * reward
         new_state = (env, a2, a1, rng_key)
 
-        result = jax.lax.cond(game_not_over,
-                              lambda x: (new_state, (action, signed_reward)),
-                              lambda x: (state, DUMMY_ACTION_REWARD),
-                              state)
-        return result
+        return new_state, MoveOutput(
+            action=action,
+            reward=signed_reward,
+            terminated=env.is_terminated()
+        )
 
     state = (
         env,  # reset_env(env),
@@ -127,11 +133,11 @@ def agent_vs_agent_multiple_games_with_records(
     envs = replicate(env, num_games)
     results = batched_avsa(agent1, agent2, envs, rng_keys)
 
-    moves, rewards = results
-    assert rewards.shape[0] == num_games
-    game_results = jnp.sum(rewards, axis=1)
+    # moves, rewards = results
+    # assert rewards.shape[0] == num_games
+    # game_results = jnp.sum(rewards, axis=1)
 
-    return game_results, moves
+    return results
 
 
 def main(
@@ -154,7 +160,7 @@ def main(
         agent = agent.load_state_dict(pickle.load(f)["agent"])
     agent = agent.eval()
     logging.info(f'Starting {num_games} eval games')
-    game_results, moves = agent_vs_agent_multiple_games_with_records(
+    game_records = agent_vs_agent_multiple_games_with_records(
         agent,
         agent,
         env,
@@ -164,6 +170,13 @@ def main(
         num_games=num_games
     )
 
+    terminated = game_records.terminated.astype(int)
+    # argmax picks the 1st in case of tie
+    game_lengths = jnp.argmax(terminated == 1, axis=1)
+    game_results = game_records.reward[jnp.arange(num_games), game_lengths]
+    for i, (len, result, actions) in enumerate(zip(game_lengths, game_results, game_records.action)):
+        gtp_moves = format_game_record_gtp(result, actions[:len])
+        print(f'game {i}: {len} {gtp_moves}')
     win_count = jnp.sum(game_results == 1)
     loss_count = jnp.sum(game_results == -1)
     logging.info(f"  evaluation      {win_count} win - {loss_count} loss")
