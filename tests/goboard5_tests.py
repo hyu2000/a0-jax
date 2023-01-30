@@ -51,8 +51,8 @@ def test_simple():
     assert not env.is_terminated()
     assert env.turn == -1
     env.render()
-    score_black = env.final_score(env.board, 1)
-    score_white = env.final_score(env.board, -1)
+    score_black = env.rough_score(env.board, 1)
+    score_white = env.rough_score(env.board, -1)
     assert score_black + score_white == 0
     print(score_black)
     invalid_actions = env.invalid_actions()
@@ -62,7 +62,7 @@ def test_simple():
 
 def test_BEST_C2_GAME():
     env = board_from_sgf(BEST_C2_GAME)
-    score = env.final_score(env.board, 1)
+    score = env.rough_score(env.board, 1)
     env.render()
     # black only counted 2 eyes, missing 3 pts
     assert score + 3 == 2.5
@@ -70,7 +70,7 @@ def test_BEST_C2_GAME():
     # black E4 will convert that space into two eyes
     env, _ = apply_move(env, 'pass')
     env, _ = apply_move(env, 'E4')
-    score = env.final_score(env.board, 1)
+    score = env.rough_score(env.board, 1)
     env.render()
     assert score == 2.5
 
@@ -91,7 +91,7 @@ def test_ko():
     # assert reward != 0
 
     env.render()
-    score = env.final_score(env.board, 1)
+    score = env.rough_score(env.board, 1)
     print(reward, score)
 
 

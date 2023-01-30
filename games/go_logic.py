@@ -1,6 +1,9 @@
+from functools import partial
+
 import numpy as np
 import jax.scipy.signal as signal
 import jax.numpy as jnp
+from jax import jit
 
 
 def setup_neighbor_filter(with_center=False):
@@ -24,6 +27,7 @@ def test_filter():
 CROSS_FILTER = setup_neighbor_filter(with_center=True)
 
 
+@partial(jit, static_argnames=("num_steps",))
 def find_reach(board, neighbor_filter, color: int, num_steps: int):
     """ find where colored stones can reach in empty spaces. Implemented as convolution
     which could be faster on GPUs by exploiting parallelism.

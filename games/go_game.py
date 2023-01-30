@@ -170,7 +170,7 @@ class GoBoard(Enviroment):
         score, _ = ggl.tromp_score(board, self.komi)
         return turn * score
 
-    def final_score(self, board, turn):
+    def rough_score(self, board, turn):
         """ final score of the game: stones + single eyes
         Not even as accurate as Tromp score
         """
