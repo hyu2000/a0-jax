@@ -157,6 +157,7 @@ def main(
         num_simulations_per_move=num_simulations_per_move,
         num_games=num_games
     )
+    logging.info(f'Done {num_games} eval games')
 
     terminated = game_records.terminated.astype(int)
     # np.argmax picks the 1st in case of tie
