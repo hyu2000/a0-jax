@@ -3,6 +3,7 @@ import pickle
 import random
 import warnings
 from functools import partial
+from typing import Tuple, List
 
 import chex
 import jax
@@ -104,7 +105,7 @@ def agent_vs_agent_with_records(
 
 
 @partial(jax.jit, static_argnums=(4, 5, 6))
-def agent_vs_agent_multiple_games_with_records(
+def _agent_vs_agent_multiple_games_with_records(
     agent1,
     agent2,
     env,
@@ -128,6 +129,32 @@ def agent_vs_agent_multiple_games_with_records(
     return results
 
 
+def agent_vs_agent_multiple_games_with_records(
+    agent1,
+    agent2,
+    env,
+    rng_key,
+    enable_mcts: bool = True,
+    num_simulations_per_move: int = 1024,
+    num_games: int = 128,
+):
+    """ this is normal Python function, non-jitted """
+    game_records = _agent_vs_agent_multiple_games_with_records(
+        agent1, agent2, env, rng_key, enable_mcts, num_simulations_per_move, num_games)
+
+    num_games = len(game_records.terminated)
+    terminated = game_records.terminated.astype(int)
+    # np.argmax picks the 1st in case of tie
+    game_ilast = jnp.argmax(terminated == 1, axis=1)
+    game_results = game_records.reward[jnp.arange(num_games), game_ilast]
+
+    gtp_moves = []
+    for i, (idx_last_move, result, actions) in enumerate(zip(game_ilast, game_results, game_records.action)):
+        game_len = idx_last_move + 1
+        gtp_moves.append(format_game_record_gtp(result, actions[:game_len]))
+    return game_results, gtp_moves
+
+
 def main(
     game_class="games.go_game.GoBoard5C2",
     agent_class="policies.resnet_policy.ResnetPolicyValueNet128",
@@ -148,7 +175,7 @@ def main(
         agent = agent.load_state_dict(pickle.load(f)["agent"])
     agent = agent.eval()
     logging.info(f'Starting {num_games} eval games')
-    game_records = agent_vs_agent_multiple_games_with_records(
+    game_results, gtp_moves = agent_vs_agent_multiple_games_with_records(
         agent,
         agent,
         env,
@@ -159,14 +186,8 @@ def main(
     )
     logging.info(f'Done {num_games} eval games')
 
-    terminated = game_records.terminated.astype(int)
-    # np.argmax picks the 1st in case of tie
-    game_ilast = jnp.argmax(terminated == 1, axis=1)
-    game_results = game_records.reward[jnp.arange(num_games), game_ilast]
-    for i, (idx_last_move, result, actions) in enumerate(zip(game_ilast, game_results, game_records.action)):
-        game_len = idx_last_move + 1
-        gtp_moves = format_game_record_gtp(result, actions[:game_len])
-        print(f'game {i}: {game_len} {gtp_moves}')
+    for i, (result, gtp_str) in enumerate(zip(game_results, gtp_moves)):
+        print(f'game {i}: {gtp_str}')
     win_count = jnp.sum(game_results == 1)
     loss_count = jnp.sum(game_results == -1)
     logging.info(f"  evaluation      {win_count} win - {loss_count} loss")
