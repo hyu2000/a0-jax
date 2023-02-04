@@ -2,9 +2,10 @@ import numpy as np
 import jax.scipy.signal as signal
 import jax.numpy as jnp
 import pax
+import tensorflow as tf
 
 from games.dsu import DSU
-from games.go_game import GoBoard5x5
+from games.go_game import GoBoard5x5, GoBoard5C2
 import go
 import coords
 from games.go_logic import tromp_score
@@ -58,6 +59,8 @@ def test_simple():
     invalid_actions = env.invalid_actions()
     assert jnp.sum(invalid_actions) == 1
     assert invalid_actions.shape == (26,)
+    obs = env.observation()
+    print(obs.shape, obs.dtype)
 
 
 def test_BEST_C2_GAME():
@@ -165,6 +168,36 @@ def test_tromp_score():
     print(score_board)
 
 
+def test_np_indexing():
+    arr = np.ones((2, 2))
+    arrnone = arr[None]  # newaxis
+    assert arrnone.ndim == arr.ndim + 1
+    print(arrnone.shape)
+    arrns = arr[None, None]
+    assert arrns.shape == (1, 1, 2, 2)
+
+
 def test_check_suicide():
     """ check whether a move is suicide. The current game logic detects it after the fact
     """
+
+
+def test_saved_model():
+    tf_model_path: str = "../exp-go5C2/tfmodel/go_agent_5"
+
+    env0 = GoBoard5x5()
+    env01, _ = apply_move(env0, 'C3')
+    env02, _ = apply_move(env0, 'D2')
+    env1 = GoBoard5C2()
+    env1, _ = apply_move(env1, 'C3')
+    env11, reward = apply_move(env1, 'D3')
+    env12, reward = apply_move(env1, 'D1')
+    input1 = env1.observation()
+    m1 = tf.saved_model.load(tf_model_path)
+    o1 = m1.f(input1)
+    print('step', env1.count, o1)
+    for env in [env0, env01, env02, env11, env12]:
+        env.render()
+        obs = env.observation()
+        print('step', env.count, m1.f(obs))
+

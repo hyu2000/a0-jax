@@ -27,10 +27,10 @@ def create_variable(path, value):
 
 
 def main(
-    game_class: str = "games.go_game.GoBoard5C2",
-    agent_class="policies.resnet_policy.ResnetPolicyValueNet128",
-    ckpt_filename: str = "./exp-go5C2/colab/go_agent_5-25.ckpt",
-    tf_model_path: str = "./exp-go5C2/tfmodel/go_agent_5",
+        game_class: str = "games.go_game.GoBoard5C2",
+        agent_class="policies.resnet_policy.ResnetPolicyValueNet128",
+        ckpt_filename: str = "./exp-go5C2/colab/go_agent_5-25.ckpt",
+        tf_model_path: str = "./exp-go5C2/tfmodel/go_agent_5",
 ):
     """Load agent's weight from disk and start the game."""
     warnings.filterwarnings("ignore")
@@ -43,7 +43,7 @@ def main(
         agent = agent.load_state_dict(pickle.load(f)["agent"])
     agent = agent.eval()
 
-    inputs = (env.observation().astype(jnp.float32),)
+    inputs = (env.observation(),)
     print(agent(inputs[0]))
 
     @partial(jax2tf.convert, with_gradient=True, enable_xla=False)
@@ -56,7 +56,7 @@ def main(
     agent = jax.device_put(agent)
     tf_params = tree.map_structure_with_path(create_variable, jax.tree_leaves(agent))
 
-    @tf.function(autograph=False, input_signature=[tf.TensorSpec(inputs[0].shape)])
+    @tf.function(autograph=False, input_signature=[tf.TensorSpec(inputs[0].shape, dtype=tf.int8)])
     def tfmodel_forward(x):
         return tf_forward(tf_params, x)
 
@@ -73,6 +73,30 @@ def main(
     cmd = f"tensorflowjs_converter --input_format=tf_saved_model --output_node_names='output_0,output_1' {tf_model_path} {tf_model_path}_js"
     print("Run the following command:")
     print(cmd)
+
+
+def test_convert5():
+    main()
+
+
+def test_convert9():
+    main(
+        game_class="games.go_game.GoBoard9x9",
+        ckpt_filename="./go_agent_9x9_128_sym.ckpt",
+        tf_model_path="./exp-go9/tfmodel-218"
+    )
+
+
+def test_saved_model():
+    game_class: str = "games.go_game.GoBoard5C2"
+    tf_model_path: str = "./exp-go5C2/tfmodel/go_agent_5"
+
+    env = import_class(game_class)()
+    env.step()
+    inputs = (env.observation().astype(jnp.float32),)
+    m1 = tf.saved_model.load(tf_model_path)
+    o1 = m1.f(inputs[0])
+    print(o1)
 
 
 if __name__ == "__main__":
