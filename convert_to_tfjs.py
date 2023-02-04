@@ -27,10 +27,10 @@ def create_variable(path, value):
 
 
 def main(
-    game_class: str = "connect_two_game.Connect2Game",
-    agent_class="mlp_policy.MlpPolicyValueNet",
-    ckpt_filename: str = "./agent.ckpt",
-    tf_model_path: str = "./tf_saved_agent",
+    game_class: str = "games.go_game.GoBoard5C2",
+    agent_class="policies.resnet_policy.ResnetPolicyValueNet128",
+    ckpt_filename: str = "./exp-go5C2/colab/go_agent_5-25.ckpt",
+    tf_model_path: str = "./exp-go5C2/tfmodel/go_agent_5",
 ):
     """Load agent's weight from disk and start the game."""
     warnings.filterwarnings("ignore")

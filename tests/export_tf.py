@@ -60,6 +60,8 @@ def test_run_tf():
 
     x = tf.ones([5, 5, 9], dtype=tf.int8)
     """
+    int8 conv issue? https://github.com/google/jax/blob/main/jax/experimental/jax2tf/g3doc/primitives_with_limited_support.md
+    Node: 'jax2tf_f_jax_/XlaConvV2'
     UnimplementedError: Could not find compiler for platform METAL: NOT_FOUND: could not find registered compiler for platform METAL -- check target linkage [Op:__inference_restored_function_body_1664]
     """
     result = my_model.f(x)
