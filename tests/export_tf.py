@@ -42,7 +42,7 @@ def main(
     with open(ckpt_filename, "rb") as f:
         agent = agent.load_state_dict(pickle.load(f)["agent"])
     agent = agent.eval()
-    convert_and_save(agent, '../exp-go5C2/tfmodel')
+    convert_and_save(agent, '../exp-go5C2/tfmodel/myconv')
 
 
 def convert_to_coreml(tfmodel):
@@ -56,7 +56,7 @@ def convert_to_coreml(tfmodel):
 
 def test_run_tf():
     # Restoring (note: the restored model does *not* require JAX to run, just XLA).
-    my_model = tf.saved_model.load('../exp-go5C2/tfmodel')
+    my_model = tf.saved_model.load('../exp-go5C2/tfmodel/myconv')
 
     x = tf.ones([5, 5, 9], dtype=tf.int8)
     """
