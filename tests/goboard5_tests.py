@@ -186,18 +186,18 @@ def test_saved_model():
     tf_model_path: str = "../exp-go5C2/tfmodel/go_agent_5"
 
     env0 = GoBoard5x5()
-    env01, _ = apply_move(env0, 'C3')
+    env01, _ = apply_move(env0, 'E3')
     env02, _ = apply_move(env0, 'D2')
     env1 = GoBoard5C2()
     env1, _ = apply_move(env1, 'C3')
     env11, reward = apply_move(env1, 'D3')
     env12, reward = apply_move(env1, 'D1')
-    input1 = env1.observation()
+    input1 = env1.canonical_observation()
     m1 = tf.saved_model.load(tf_model_path)
     o1 = m1.f(input1)
     print('step', env1.count, o1)
     for env in [env0, env01, env02, env11, env12]:
         env.render()
-        obs = env.observation()
+        obs = env.canonical_observation()
         print('step', env.count, m1.f(obs))
 

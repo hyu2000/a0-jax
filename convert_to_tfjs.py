@@ -43,7 +43,7 @@ def main(
         agent = agent.load_state_dict(pickle.load(f)["agent"])
     agent = agent.eval()
 
-    inputs = (env.observation(),)
+    inputs = (env.canonical_observation(),)
     print(agent(inputs[0]))
 
     @partial(jax2tf.convert, with_gradient=True, enable_xla=False)
@@ -63,11 +63,13 @@ def main(
     model = tf.Module()
     model.f = tfmodel_forward
     model.params = tf_params
-    o = model.f(*tree.map_structure(tf.zeros_like, inputs))  # Dummy call.
+    # o = model.f(*tree.map_structure(tf.zeros_like, inputs))  # Dummy call.
+    o = model.f(inputs[0])
     print(o)
     tf.saved_model.save(model, tf_model_path)
     m1 = tf.saved_model.load(tf_model_path)
-    o1 = m1.f(*tree.map_structure(tf.zeros_like, inputs))
+    # o1 = m1.f(*tree.map_structure(tf.zeros_like, inputs))
+    o1 = m1.f(inputs[0])
     print(o1)
 
     cmd = f"tensorflowjs_converter --input_format=tf_saved_model --output_node_names='output_0,output_1' {tf_model_path} {tf_model_path}_js"
