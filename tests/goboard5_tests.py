@@ -200,7 +200,7 @@ def test_saved_model():
     o1 = m1.f(input1)
     print('step', env1.count, o1)
     obss = []
-    for env in [env01, env02, env11, env12]:
+    for env in [env0, env01, env02, env11, env12]:
         # env.render()
         obss.append(env.canonical_observation())
     xs = jnp.stack(obss)

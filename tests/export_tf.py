@@ -28,10 +28,11 @@ def convert_and_save(agent, fname):
         # jit_compile=True,
         input_signature=(tf.TensorSpec(shape=[5, 5, 9], dtype=tf.int8),))
     my_model.f_batched = tf.function(
-        jax2tf.convert(f_jax_batched, enable_xla=False),
+        jax2tf.convert(f_jax_batched, enable_xla=False,
+                       polymorphic_shapes=["(b, 5, 5, 9)"]),
         autograph=False,
         # jit_compile=True,
-        input_signature=(tf.TensorSpec(shape=[4, 5, 5, 9], dtype=tf.int8),))
+        input_signature=(tf.TensorSpec(shape=[None, 5, 5, 9], dtype=tf.int8),))
     tf.saved_model.save(my_model, fname,
                         options=tf.saved_model.SaveOptions(experimental_custom_gradients=True))
 
