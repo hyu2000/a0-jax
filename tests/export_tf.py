@@ -19,7 +19,8 @@ def convert_and_save(agent, fname):
 
     my_model = tf.Module()
     # Save a function that can take scalar inputs.
-    my_model.f = tf.function(jax2tf.convert(f_jax), autograph=False,
+    my_model.f = tf.function(jax2tf.convert(f_jax, enable_xla=False),
+                             autograph=False,
                              # jit_compile = True,
                              input_signature=(tf.TensorSpec(shape=[5, 5, 9], dtype=tf.int8),))
     tf.saved_model.save(my_model, fname,
@@ -59,7 +60,7 @@ def test_run_tf():
     my_model = tf.saved_model.load('../exp-go5C2/tfmodel/myconv')
 
     x = tf.ones([5, 5, 9], dtype=tf.int8)
-    """
+    """ when jax2tf.convert(f_jax, enable_xla=True),
     int8 conv issue? https://github.com/google/jax/blob/main/jax/experimental/jax2tf/g3doc/primitives_with_limited_support.md
     Node: 'jax2tf_f_jax_/XlaConvV2'
     UnimplementedError: Could not find compiler for platform METAL: NOT_FOUND: could not find registered compiler for platform METAL -- check target linkage [Op:__inference_restored_function_body_1664]
