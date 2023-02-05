@@ -1,3 +1,5 @@
+import pickle
+
 import numpy as np
 import jax.scipy.signal as signal
 import jax.numpy as jnp
@@ -9,6 +11,7 @@ from games.go_game import GoBoard5x5, GoBoard5C2
 import go
 import coords
 from games.go_logic import tromp_score
+from policies.resnet_policy import ResnetPolicyValueNet128
 
 assert go.N == 5
 
@@ -183,7 +186,7 @@ def test_check_suicide():
 
 
 def test_saved_model():
-    tf_model_path: str = "../exp-go5C2/tfmodel/go_agent_5"
+    tf_model_path: str = "../exp-go5C2/tfmodel/myconv"
 
     env0 = GoBoard5x5()
     env01, _ = apply_move(env0, 'E3')
@@ -196,8 +199,40 @@ def test_saved_model():
     m1 = tf.saved_model.load(tf_model_path)
     o1 = m1.f(input1)
     print('step', env1.count, o1)
-    for env in [env0, env01, env02, env11, env12]:
-        env.render()
-        obs = env.canonical_observation()
-        print('step', env.count, m1.f(obs))
+    obss = []
+    for env in [env01, env02, env11, env12]:
+        # env.render()
+        obss.append(env.canonical_observation())
+    xs = jnp.stack(obss)
+    probs, values = m1.f_batched(xs)
+    print(probs.shape, values)
 
+
+def setup5x5(ckpt_filename='../exp-go5C2/colab/go_agent_5-25.ckpt'):
+    env0 = GoBoard5x5()
+    agent = ResnetPolicyValueNet128(
+        input_dims=env0.observation().shape,
+        num_actions=env0.num_actions(),
+    )
+    with open(ckpt_filename, "rb") as f:
+        dic = pickle.load(f)
+        agent = agent.load_state_dict(dic["agent"])
+    agent = agent.eval()
+    return env0, agent
+
+
+def test_batch_eval():
+    """ dnn(, batched=True) """
+    env0, agent = setup5x5()
+
+    obs = []
+    obs.append(env0.canonical_observation())
+    env, _ = apply_move(env0, 'C2')
+    obs.append(env.canonical_observation())
+    env, _ = apply_move(env0, 'D1')
+    obs.append(env.canonical_observation())
+
+    xs = jnp.stack(obs)
+    probs, values = agent(xs, batched=True)
+    print([coords.flat_to_gtp(jnp.argmax(x)) for x in probs])
+    print(values)

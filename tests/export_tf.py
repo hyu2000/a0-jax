@@ -17,15 +17,23 @@ def convert_and_save(agent, fname):
     def f_jax(x):
         return agent(x)
 
+    def f_jax_batched(x):
+        return agent(x, batched=True)
+
     my_model = tf.Module()
     # Save a function that can take scalar inputs.
-    my_model.f = tf.function(jax2tf.convert(f_jax, enable_xla=False),
-                             autograph=False,
-                             # jit_compile = True,
-                             input_signature=(tf.TensorSpec(shape=[5, 5, 9], dtype=tf.int8),))
+    my_model.f = tf.function(
+        jax2tf.convert(f_jax, enable_xla=False),
+        autograph=False,
+        # jit_compile=True,
+        input_signature=(tf.TensorSpec(shape=[5, 5, 9], dtype=tf.int8),))
+    my_model.f_batched = tf.function(
+        jax2tf.convert(f_jax_batched, enable_xla=False),
+        autograph=False,
+        # jit_compile=True,
+        input_signature=(tf.TensorSpec(shape=[4, 5, 5, 9], dtype=tf.int8),))
     tf.saved_model.save(my_model, fname,
-                        options=tf.saved_model.SaveOptions(experimental_custom_gradients=True)
-                        )
+                        options=tf.saved_model.SaveOptions(experimental_custom_gradients=True))
 
 
 def main(
@@ -53,6 +61,7 @@ def convert_to_coreml(tfmodel):
                          convert_to="mlprogram",
                          compute_precision=ct.precision.FLOAT16,
                          compute_units=ct.ComputeUnit.ALL)
+    return mlmodel
 
 
 def test_run_tf():
@@ -67,6 +76,15 @@ def test_run_tf():
     """
     result = my_model.f(x)
     print(result)
+
+
+def test_convert_to_coreml():
+    tfmodel = tf.saved_model.load('../exp-go5C2/tfmodel/myconv')
+    """
+    NotImplementedError: Expected model format: [SavedModel | [concrete_function] | tf.keras.Model | .h5 | GraphDef], got <tensorflow.python.saved_model.load.Loader._recreate_base_user_object.<locals>._UserObject object at 0x16e49c160>
+    """
+    mlmodel = convert_to_coreml(tfmodel)
+    # mlmodel.save('')
 
 
 def test_convert():

@@ -19,6 +19,7 @@ parser.add_argument(
     "--agent-class", default="policies.resnet_policy.ResnetPolicyValueNet128", type=str
 )
 parser.add_argument("--ckpt-filename", default="go_agent_9x9_128_sym.ckpt", type=str)
+# parser.add_argument("--ckpt-filename", default="./exp-go5C2/colab/go_agent_5-25.ckpt", type=str)
 parser.add_argument("--num_simulations_per_move", default=4, type=int)
 enable_mcts = True
 args = parser.parse_args()
