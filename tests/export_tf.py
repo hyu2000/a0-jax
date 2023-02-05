@@ -2,6 +2,7 @@
 import pickle
 import warnings
 from functools import partial
+from typing import Tuple
 
 import jax
 from jax.experimental import jax2tf
@@ -13,7 +14,7 @@ import tensorflow as tf
 from utils import import_class
 
 
-def convert_and_save(agent, fname):
+def convert_and_save(agent, input_dims: Tuple, fname):
     def f_jax(x):
         return agent(x)
 
@@ -26,13 +27,14 @@ def convert_and_save(agent, fname):
         jax2tf.convert(f_jax, enable_xla=False),
         autograph=False,
         # jit_compile=True,
-        input_signature=(tf.TensorSpec(shape=[5, 5, 9], dtype=tf.int8),))
+        input_signature=(tf.TensorSpec(shape=input_dims, dtype=tf.int8),))
+    batch_shape = (None, ) + input_dims
+    polymorphic_shapes = str(batch_shape).replace('None', 'b')  # "(b, 5, 5, 9)"
     my_model.f_batched = tf.function(
         jax2tf.convert(f_jax_batched, enable_xla=False,
-                       polymorphic_shapes=["(b, 5, 5, 9)"]),
+                       polymorphic_shapes=[polymorphic_shapes]),
         autograph=False,
-        # jit_compile=True,
-        input_signature=(tf.TensorSpec(shape=[None, 5, 5, 9], dtype=tf.int8),))
+        input_signature=(tf.TensorSpec(shape=batch_shape, dtype=tf.int8),))
     tf.saved_model.save(my_model, fname,
                         options=tf.saved_model.SaveOptions(experimental_custom_gradients=True))
 
@@ -41,18 +43,20 @@ def main(
     game_class="games.go_game.GoBoard5C2",
     agent_class="policies.resnet_policy.ResnetPolicyValueNet128",
     ckpt_filename: str = "../exp-go5C2/colab/go_agent_5-25.ckpt",
+    tf_model_path: str = '../exp-go5C2/tfmodel/model5-25'
 ):
     """Load agent's weight from disk """
     warnings.filterwarnings("ignore")
     env = import_class(game_class)()
+    input_dims = env.observation().shape
     agent = import_class(agent_class)(
-        input_dims=env.observation().shape,
+        input_dims=input_dims,
         num_actions=env.num_actions(),
     )
     with open(ckpt_filename, "rb") as f:
         agent = agent.load_state_dict(pickle.load(f)["agent"])
     agent = agent.eval()
-    convert_and_save(agent, '../exp-go5C2/tfmodel/myconv')
+    convert_and_save(agent, input_dims, tf_model_path)
 
 
 def convert_to_coreml(tfmodel):
@@ -88,6 +92,14 @@ def test_convert_to_coreml():
     # mlmodel.save('')
 
 
-def test_convert():
+def test_convert5():
     # this works
     main()
+
+
+def test_convert9():
+    main(
+        game_class="games.go_game.GoBoard9x9",
+        ckpt_filename="../go_agent_9x9_128_sym.ckpt",
+        tf_model_path="../exp-go9/tfmodel/model-218"
+    )

@@ -186,7 +186,7 @@ def test_check_suicide():
 
 
 def test_saved_model():
-    tf_model_path: str = "../exp-go5C2/tfmodel/myconv"
+    tf_model_path: str = "../exp-go5C2/tfmodel/model5-25"
 
     env0 = GoBoard5x5()
     env01, _ = apply_move(env0, 'E3')
@@ -197,12 +197,14 @@ def test_saved_model():
     env12, reward = apply_move(env1, 'D1')
     input1 = env1.canonical_observation()
     m1 = tf.saved_model.load(tf_model_path)
+    # eval on a single obs
     o1 = m1.f(input1)
     print('step', env1.count, o1)
     obss = []
     for env in [env0, env01, env02, env11, env12]:
         # env.render()
         obss.append(env.canonical_observation())
+    # batch eval
     xs = jnp.stack(obss)
     probs, values = m1.f_batched(xs)
     print(probs.shape, values)

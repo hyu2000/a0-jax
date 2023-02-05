@@ -81,14 +81,6 @@ def test_convert5():
     main()
 
 
-def test_convert9():
-    main(
-        game_class="games.go_game.GoBoard9x9",
-        ckpt_filename="./go_agent_9x9_128_sym.ckpt",
-        tf_model_path="./exp-go9/tfmodel-218"
-    )
-
-
 def test_saved_model():
     game_class: str = "games.go_game.GoBoard5C2"
     tf_model_path: str = "./exp-go5C2/tfmodel/go_agent_5"
