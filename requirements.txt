@@ -1,13 +1,15 @@
 chex
 click
 fire
-jax
-jaxlib 
+jax ==0.4.16
+jaxlib  ==0.4.14
 mctx
+numpy ==1.26
 opax
 optax
 pax3
 tqdm
-tensorflow-cpu
+tensorflow
+tensorflow-metal
 pygraphviz
 flask
