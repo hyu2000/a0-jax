@@ -6,8 +6,9 @@ jaxlib  ==0.4.14
 mctx
 numpy ==1.26
 opax
-optax
+optax ==0.1.9
 pax3
+scipy <1.11
 tqdm
 tensorflow
 tensorflow-metal
