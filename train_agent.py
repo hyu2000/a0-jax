@@ -281,7 +281,7 @@ def train(
         agent, losses = agent.train(), []
         agent, optim = jax.device_put_replicated((agent, optim), devices)
         ids = range(0, len(data) - training_batch_size, training_batch_size)
-        logging.info(f'  training {num_self_plays_per_iteration} games, #samples=%d', len(data))
+        logging.info(f'  training {num_self_plays_per_iteration} games, #samples=%d, #steps=%d', len(data), len(ids))
         with click.progressbar(ids, label="  train agent   ") as progressbar:
             for idx in progressbar:
                 batch = data[idx : (idx + training_batch_size)]
