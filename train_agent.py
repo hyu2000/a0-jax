@@ -212,17 +212,17 @@ def train_step(net, optim, data: TrainingExample):
 def train(
     game_class="games.go_game.GoBoard9x9",
     agent_class="policies.resnet_policy.ResnetPolicyValueNet128",
-    selfplay_batch_size: int = 128,
-    training_batch_size: int = 128,
+    selfplay_batch_size: int = 128,  # number of games. For parallelizing selfplay
+    training_batch_size: int = 128,  # mini-batch size
     num_iterations: int = 100,
     num_simulations_per_move: int = 32,
-    num_self_plays_per_iteration: int = 128 * 100,
+    num_self_plays_per_iteration: int = 128 * 100,  # number of games
     learning_rate: float = 0.01,
     ckpt_filebase: str = "./agent",
     random_seed: int = 42,
     weight_decay: float = 1e-4,
-    lr_decay_steps: int = 100_000,
-    num_eval_games: int = 128,
+    lr_decay_steps: int = 100_000,  # halve LR every #steps
+    num_eval_games: int = 128,  # per side
     num_simulations_per_move_eval: int = 1024
 ):
     """Train an agent by self-play."""
@@ -329,7 +329,7 @@ def train(
 
 def _save_game_records(game_records: List[str], header: str):
     print(header)
-    print('\n'.join(game_records))
+    print('\n'.join(game_records).replace('pass', '--',))
 
 
 if __name__ == "__main__":

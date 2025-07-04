@@ -7,7 +7,7 @@ from jax import numpy as jnp
 
 import coords
 from play_with_records import agent_vs_agent_multiple_games_with_records
-from train_agent import format_game_record_gtp
+from go_utils import format_game_record_gtp
 from utils import import_class, reset_env, replicate
 import go
 
@@ -97,6 +97,7 @@ def test_avsa_multi_games():
 def test_replicate():
     """ pax.module is registered as pytree, so that jax can directly operate on them
     It uses data type to separate the attributes
+    https://github.com/NTT123/pax/blob/main/docs/notebooks/understanding.ipynb
     """
     env, agent, rng_key = setupGo5()
     leaves = jax.tree_util.tree_leaves(env)

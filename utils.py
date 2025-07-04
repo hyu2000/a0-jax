@@ -78,5 +78,5 @@ def find_latest_ckpt(path_base: str) -> Optional[str]:
         return None
     idx_start = len(path_base) + 1
     idx_gens = [int(fname[idx_start:-5]) for fname in fnames]
-    idx_latest = sorted(idx_gens)[-1]
+    idx_latest = max(idx_gens)
     return f'{path_base}-{idx_latest}.ckpt'

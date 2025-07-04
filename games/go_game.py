@@ -262,6 +262,7 @@ class GoBoard(Enviroment):
         return i * self.board_size + j
 
     def symmetries(self, state, action_weights):
+        """ 8 symmetries """
         N = self.board_size
         action_no_pass = action_weights[:-1].reshape((N, N))
         pass_move = action_weights[-1:]
