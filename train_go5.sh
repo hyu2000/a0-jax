@@ -6,7 +6,7 @@ python3 train_agent.py \
     --game-class="games.go_game.GoBoard5C2" \
     --agent-class="policies.resnet_policy.ResnetPolicyValueNet128" \
     --random-seed=42 \
-    --ckpt-filebase="./exp-go5C2/go_agent_5" \
+    --ckpt-filebase="/content/drive/MyDrive/dlgo/5x5/a0jax/exp-go5C2/go_agent_5" \
     --selfplay-batch-size=64 \
     --training-batch-size=1024 \  # this goes with LR. 1024 is about 32 games
     --learning-rate=1e-2 \
