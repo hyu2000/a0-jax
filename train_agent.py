@@ -305,12 +305,12 @@ def train(
         )
         _save_game_records(game_records1, f'  eval gen{iteration} vs {iteration - 1}, {num_eval_games} games:')
         _save_game_records(game_records2, f'  eval gen{iteration - 1} vs {iteration}, {num_eval_games} games:')
-        win_count  = jnp.sum(game_results1 == 1)  + jnp.sum(game_results2 == -1)
-        draw_count = jnp.sum(game_results1 == 0)  + jnp.sum(game_results2 == 0)
-        loss_count = jnp.sum(game_results1 == -1) + jnp.sum(game_results2 == 1)
-        logging.info(
-            f"  evaluation      {win_count} win - {draw_count} draw - {loss_count} loss"
-        )
+        win_count_1, win_count_2   = jnp.sum(game_results1 == env.turn),  jnp.sum(game_results2 == -env.turn)
+        loss_count_1, loss_count_2 = jnp.sum(game_results1 == -env.turn), jnp.sum(game_results2 == env.turn)
+        draw_count_1, draw_count_2 = jnp.sum(game_results1 == 0),  jnp.sum(game_results2 == 0)
+        logging.info(f"  evaluation: as {env.turn}: {win_count_1} win - {draw_count_1} draw - {loss_count_1} loss")
+        logging.info(f"              as {-env.turn}: {win_count_2} win - {draw_count_2} draw - {loss_count_2} loss")
+        logging.info(f"              total:  {win_count_1 + win_count_2} win - {draw_count_1 + draw_count_2} draw - {loss_count_1 + loss_count_2} loss")
         logging.info(
             f"  value loss {value_loss:.3f}"
             f"  policy loss {policy_loss:.3f}"
