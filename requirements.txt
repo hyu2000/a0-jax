@@ -2,7 +2,7 @@ chex
 click
 fire
 jax ==0.4.16
-jaxlib  ==0.4.14
+jaxlib  ==0.4.16
 mctx
 numpy ==1.26
 opax
