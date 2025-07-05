@@ -1,8 +1,8 @@
 chex
 click
 fire
-jax==0.4.14
-jaxlib==0.4.14+cuda12.cudnn89 --find-links https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+jax==0.4.7
+jaxlib==0.4.7+cuda12.cudnn88 --find-links https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 mctx
 numpy ==1.26
 opax
